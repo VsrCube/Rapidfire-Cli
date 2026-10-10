@@ -30,7 +30,7 @@ RapidFire is a lightweight terminal overlay and interactive developer environmen
 | 10 | **Unified Git & GitHub Automation** | Single-command staging, commit, push, branch management & auto `gh` repo | [View](#unified-git--github-automation) |
 | 11 | **Bidirectional History & Highlighting** | Bidirectional shell history sync (Bash/Zsh/PowerShell), live syntax highlighting | [View](#bidirectional-terminal-history--real-time-highlighting) |
 | 12 | **Command Reference** | Comprehensive quick-reference table for all RapidFire commands | [View](#command-reference) |
-| 13 | **Testing & Verification** | 24 automated test suites, simulated remotes, security audit checks | [View](#testing--verification) |
+| 13 | **Testing & Verification** | 26 automated test suites, simulated remotes, security audit checks | [View](#testing--verification) |
 | 14 | **License** | Open-source MIT license details | [View](#license) |
 
 ---
@@ -555,6 +555,9 @@ RapidFire seamlessly synchronizes command history across your host operating sys
 | Command | Category | Description |
 |---|---|---|
 | `help` | General | Display the interactive command manual |
+| `rapidfire` / `rapidfire-cli` | General | Re-display session banner and status within active REPL |
+| `clear` / `cls` | General | Clear terminal screen buffer instantly and return prompt |
+| `version` / `-v` / `--version` | General | Display active RapidFire CLI version |
 | `init` / `setup <recipe> <folder>` | Scaffolding | Scaffold any of the 13 built-in full-stack projects or initialize RapidFire |
 | `setup <fe>+<be> <folder>` | Dynamic Scaffolding | Dynamically compose unlisted pairings (e.g. `setup svelte+fastapi myapp`) |
 | `setup <unknown> <folder>` | AI Scaffolding | Dynamically scaffold unknown frameworks (e.g. `hono`, `astro`, `solid`, `nextjs`) |
