@@ -33,6 +33,7 @@ class RapidfireRepl {
   }
 
   start() {
+    process.stdout.write('\x1b[?9001l\x1b[?1004l');
     this.printBanner();
 
     this.rl = readline.createInterface({
@@ -45,12 +46,12 @@ class RapidfireRepl {
     // Pre-populate readline history with previous host shell commands (PowerShell, Bash, Zsh)
     try {
       this.rl.history = loadHistory(100);
-    } catch {}
+    } catch { }
 
     // Real-time syntax highlighting hook on readline output
     if (typeof this.rl._writeToOutput === 'function') {
       const origWrite = this.rl._writeToOutput.bind(this.rl);
-      this.rl._writeToOutput = function(stringToWrite) {
+      this.rl._writeToOutput = function (stringToWrite) {
         if (typeof stringToWrite === 'string' && this._prompt && stringToWrite.startsWith(this._prompt)) {
           const rawLine = stringToWrite.slice(this._prompt.length);
           const highlighted = highlightSyntax(rawLine);
@@ -67,7 +68,7 @@ class RapidfireRepl {
     );
     if (symInsert && typeof this.rl[symInsert] === 'function') {
       Object.defineProperty(this.rl, symInsert, {
-        value: function(c) {
+        value: function (c) {
           if (this.cursor < this.line.length) {
             const beg = this.line.slice(0, this.cursor);
             const end = this.line.slice(this.cursor);
@@ -89,6 +90,7 @@ class RapidfireRepl {
     // This prevents bash startup prompt ([user@host cwd]$) from bleeding into initial screen
     this.shell.onData((data) => {
       let chunk = data;
+      if (chunk) chunk = chunk.replace(/\x1b\[\?(9001|1004)[hl]/g, '');
 
       // Clean internal PowerShell / subshell prompt strings so they don't collide with rapidfire prompt
       if (chunk) {
@@ -262,10 +264,11 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
     if (this.idleTimer) clearTimeout(this.idleTimer);
     try {
       saveSessionHistory(this.sessionCommands);
-    } catch {}
+    } catch { }
     if (this.shell) {
       this.shell.kill();
     }
+    process.stdout.write('\x1b[?9001l\x1b[?1004l');
     process.exit(0);
   }
 }

@@ -14,7 +14,7 @@ class ChildProcessPtyAdapter {
   constructor(proc) {
     this.proc = proc;
     if (this.proc) {
-      this.proc.on('error', () => {});
+      this.proc.on('error', () => { });
     }
   }
   write(data) {
@@ -35,7 +35,7 @@ class ChildProcessPtyAdapter {
       this.proc.on('close', (code) => cb({ exitCode: code }));
     }
   }
-  resize() {}
+  resize() { }
   kill() {
     if (this.proc) this.proc.kill();
   }
@@ -51,9 +51,8 @@ function resolveShell() {
 
   const isWindows = process.platform === 'win32';
   if (isWindows) {
-    const ps = 'powershell.exe';
     return {
-      shell: process.env.COMSPEC || ps,
+      shell: 'powershell.exe',
       args: ['-NoLogo', '-NoProfile', '-Command', '-']
     };
   }
@@ -90,6 +89,7 @@ class PersistentShell {
   }
 
   resolveShell() {
+
     return resolveShell();
   }
 
