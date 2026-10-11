@@ -31,14 +31,19 @@ try {
   delete process.env.SHELL;
   Object.defineProperty(process, 'platform', { value: 'win32' });
   const winShell = resolveShell();
-  assert(winShell.shell.includes('powershell.exe') || winShell.shell.includes('cmd'), 'Windows should default to powershell.exe or COMSPEC');
+  assert.strictEqual(winShell.shell, 'powershell.exe', 'Windows must strictly resolve to powershell.exe');
   assert(winShell.args.includes('-NoLogo'), 'Windows PowerShell should include -NoLogo');
+  
+  // Verify ConPTY and focus reporting sequence sanitization
+  const sampleConPtyChunk = '\x1b[?9001h\x1b[?1004h\x1b[32mActive Process\x1b[0m\x1b[?9001l\x1b[?1004l';
+  const sanitizedChunk = sampleConPtyChunk.replace(/\x1b\[\?(9001|1004)[hl]/g, '');
+  assert.strictEqual(sanitizedChunk, '\x1b[32mActive Process\x1b[0m', 'ConPTY and focus escape sequences must be completely stripped');
   
   const repl = new RapidfireRepl();
   const winPrompt = repl.getPrompt();
   assert(winPrompt.includes('PS '), 'Windows prompt must include PS prefix');
   if (repl.shell) repl.shell.kill();
-  console.log('  ✔ Windows (win32) simulation passed (PowerShell -NoLogo + PS prefix)');
+  console.log('  ✔ Windows (win32) simulation passed (PowerShell -NoLogo + ConPTY sequence filter + PS prefix)');
 
   // 5. Test macOS (darwin) simulation
   Object.defineProperty(process, 'platform', { value: 'darwin' });
