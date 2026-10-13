@@ -217,7 +217,7 @@ async function handlePush(rawArgs, context = {}) {
   try {
     const res = runCapture('git rev-parse --is-inside-work-tree', { cwd });
     inGit = res.trim() === 'true';
-  } catch {}
+  } catch { }
 
   if (!inGit) {
     console.log(`\n${yellow}[rapidfire-git] No Git repository found in current directory.${reset}`);
@@ -239,13 +239,17 @@ async function handlePush(rawArgs, context = {}) {
       run('git init', { cwd, stdio: 'ignore' });
     }
     installPrePushHook(cwd);
+  } else {
+    try {
+      installPrePushHook(cwd);
+    } catch { }
   }
 
   // 2. Resolve target branch
   let currentBranch = 'main';
   try {
     currentBranch = runCapture('git branch --show-current', { cwd }).trim() || 'main';
-  } catch {}
+  } catch { }
 
   const targetBranch = parsed.branch || currentBranch;
   if (parsed.branch && parsed.branch !== currentBranch) {
@@ -253,7 +257,7 @@ async function handlePush(rawArgs, context = {}) {
     try {
       runCapture(`git rev-parse --verify "${parsed.branch}"`, { cwd });
       branchExists = true;
-    } catch {}
+    } catch { }
 
     try {
       if (branchExists) {
@@ -274,7 +278,7 @@ async function handlePush(rawArgs, context = {}) {
             }
           } catch (stErr) {
             if (stashed) {
-              try { run('git stash pop', { cwd, stdio: 'ignore' }); } catch {}
+              try { run('git stash pop', { cwd, stdio: 'ignore' }); } catch { }
             }
             throw stErr;
           }
@@ -305,7 +309,7 @@ async function handlePush(rawArgs, context = {}) {
       try {
         const answer = await context.ask('Enter commit message: ');
         commitMessage = answer?.trim();
-      } catch {}
+      } catch { }
     }
     if (!commitMessage) {
       commitMessage = 'Update project files via RapidFire CLI';
@@ -317,7 +321,7 @@ async function handlePush(rawArgs, context = {}) {
   let statusOutput = '';
   try {
     statusOutput = runCapture('git status --porcelain', { cwd }).trim();
-  } catch {}
+  } catch { }
 
   if (statusOutput.length > 0) {
     console.log(`${cyan}[rapidfire-git] Committing:${reset} "${commitMessage}"`);
@@ -338,7 +342,7 @@ async function handlePush(rawArgs, context = {}) {
   try {
     const remotes = runCapture('git remote', { cwd }).trim();
     hasRemote = remotes.split(/\r?\n/).some((r) => r.trim() === 'origin');
-  } catch {}
+  } catch { }
 
   if (!hasRemote) {
     console.log(`\n${yellow}[rapidfire-git] No remote repository 'origin' linked.${reset}`);
@@ -372,14 +376,14 @@ async function handlePush(rawArgs, context = {}) {
   try {
     runCapture(`git rev-parse --verify "origin/${targetBranch}"`, { cwd });
     remoteBranchExists = true;
-  } catch {}
+  } catch { }
 
   let unpushedCommitsCount = 0;
   if (remoteBranchExists) {
     try {
       const count = runCapture(`git rev-list --count "origin/${targetBranch}..HEAD"`, { cwd }).trim();
       unpushedCommitsCount = parseInt(count, 10) || 0;
-    } catch {}
+    } catch { }
   }
 
   try {

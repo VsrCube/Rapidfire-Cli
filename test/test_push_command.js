@@ -73,9 +73,18 @@ async function runTests() {
   const tmpRoot = path.join(os.tmpdir(), `test_push_${Date.now()}`);
   const bareRemote = path.join(tmpRoot, 'remote.git');
   const localProject = path.join(tmpRoot, 'my_project');
+  const mockBin = path.join(tmpRoot, 'mock_bin');
 
   fse.ensureDirSync(bareRemote);
   fse.ensureDirSync(localProject);
+  fse.ensureDirSync(mockBin);
+
+  // Mock gitleaks executable to satisfy pre-push security hook in test runner
+  fs.writeFileSync(path.join(mockBin, 'gitleaks.cmd'), '@exit /b 0\r\n', 'utf8');
+  fs.writeFileSync(path.join(mockBin, 'gitleaks'), '#!/bin/sh\nexit 0\n', 'utf8');
+  try { fs.chmodSync(path.join(mockBin, 'gitleaks'), 0o755); } catch { }
+  const origPath = process.env.PATH;
+  process.env.PATH = mockBin + path.delimiter + process.env.PATH;
 
   try {
     // Set up bare remote

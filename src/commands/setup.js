@@ -49,15 +49,19 @@ export default defineConfig({ plugins: [react()], server: { port: 3000 } });
 <html lang="en"><head><meta charset="UTF-8" /><title>Rapidfire React</title></head>
 <body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>
 `, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env.example'), 'VITE_API_URL=http://localhost:8000\n', 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
   fse.writeFileSync(path.join(srcDir, 'index.css'), `body { margin: 0; background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; display: flex; min-height: 100vh; align-items: center; justify-content: center; }`, 'utf8');
   fse.writeFileSync(path.join(srcDir, 'App.jsx'), `import React, { useState } from 'react';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 export default function App() {
   const [count, setCount] = useState(0);
   return (
     <div style={{ textAlign: 'center' }}>
       <h1>Rapidfire React App</h1>
+      <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>API Endpoint: {API_URL}</p>
       <button style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', background: '#38bdf8', border: 'none', fontWeight: 'bold' }} onClick={() => setCount(c => c + 1)}>Count: {count}</button>
     </div>
   );
@@ -285,7 +289,7 @@ async function initGitAndHooks(projectPath, targetFolder, context = {}) {
       console.log(`\x1b[33m[rapidfire] Detected parent Git repository at '${parentRepo}'. Skipping nested git init.\x1b[0m`);
       try {
         installPrePushHook(parentRepo);
-      } catch {}
+      } catch { }
       return { initialized: false, isNested: true, parentRepo };
     }
 
