@@ -14,7 +14,6 @@ const originalCwd = process.cwd();
 process.chdir(tmpDir);
 
 try {
-  // 1. Test setup fastapi (standalone)
   console.log('[Recipe 1] Testing setup fastapi...');
   handleSetup(['fastapi', 'my_fastapi_app']);
   const faDir = path.join(tmpDir, 'my_fastapi_app');
@@ -26,7 +25,6 @@ try {
   assert.strictEqual(faManifest.frontend, null);
   console.log('✓ setup fastapi verified.');
 
-  // 2. Test setup react+fastapi
   console.log('[Recipe 2] Testing setup react+fastapi...');
   handleSetup(['react+fastapi', 'my_react_fastapi']);
   const rfDir = path.join(tmpDir, 'my_react_fastapi');
@@ -38,7 +36,6 @@ try {
   assert.strictEqual(rfManifest.backend, 'fastapi');
   console.log('✓ setup react+fastapi verified.');
 
-  // 3. Test setup vue+node
   console.log('[Recipe 3] Testing setup vue+node...');
   handleSetup(['vue+node', 'my_vue_node']);
   const vnDir = path.join(tmpDir, 'my_vue_node');
@@ -50,7 +47,6 @@ try {
   assert.strictEqual(vnManifest.backend, 'node');
   console.log('✓ setup vue+node verified.');
 
-  // 4. Test setup react+flask
   console.log('[Recipe 4] Testing setup react+flask...');
   handleSetup(['react+flask', 'my_react_flask']);
   const rkDir = path.join(tmpDir, 'my_react_flask');

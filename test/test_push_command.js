@@ -9,7 +9,6 @@ const { run, runCapture } = require('../src/utils/proc');
 console.log('--- TEST: CUSTOM GIT PUSH & AUTO WORKFLOW ---');
 
 async function runTests() {
-  // 1. Argument parsing tests
   console.log('[Test 1] Testing flexible command syntax parsing...');
 
   const p1 = parsePushArgs('git add . push -branch main -commit "first commit"');
@@ -68,7 +67,6 @@ async function runTests() {
 
   console.log('✓ All syntax parsing combinations verified successfully.');
 
-  // 2. Integration test with simulated local git remote
   console.log('[Test 2] Testing staging, committing, and pushing in an active repository...');
   const tmpRoot = path.join(os.tmpdir(), `test_push_${Date.now()}`);
   const bareRemote = path.join(tmpRoot, 'remote.git');
@@ -78,36 +76,28 @@ async function runTests() {
   fse.ensureDirSync(localProject);
 
   try {
-    // Set up bare remote
     run('git init --bare', { cwd: bareRemote, stdio: 'ignore' });
 
-    // Set up local repo
     try {
       run('git init -b main', { cwd: localProject, stdio: 'ignore' });
     } catch {
       run('git init', { cwd: localProject, stdio: 'ignore' });
     }
 
-    // Configure dummy user for committing
     run('git config user.name "Rapidfire Tester"', { cwd: localProject, stdio: 'ignore' });
     run('git config user.email "tester@rapidfire.dev"', { cwd: localProject, stdio: 'ignore' });
 
-    // Link remote origin
     run(`git remote add origin "${bareRemote}"`, { cwd: localProject, stdio: 'ignore' });
 
-    // Create file 1
     fs.writeFileSync(path.join(localProject, 'app.js'), 'console.log("Rapidfire Push 1");\n', 'utf8');
 
-    // Run custom push command
     const res1 = await handlePush('push -m "Add initial app.js"', { cwd: localProject });
     assert(res1.success, 'First push should succeed');
     assert.strictEqual(res1.commitMade, true, 'Commit should be created');
 
-    // Verify commit in local repo
     const log1 = runCapture('git log -1 --pretty=%B', { cwd: localProject }).trim();
     assert.strictEqual(log1, 'Add initial app.js', 'Commit message should match');
 
-    // Create file 2 and push using compound syntax
     console.log('[Test 3] Testing compound "git add . push -branch main -commit ..." syntax...');
     fs.writeFileSync(path.join(localProject, 'server.js'), 'console.log("Rapidfire Server");\n', 'utf8');
 
@@ -118,7 +108,6 @@ async function runTests() {
     const log2 = runCapture('git log -1 --pretty=%B', { cwd: localProject }).trim();
     assert.strictEqual(log2, 'Add server module', 'Second commit message should match');
 
-    // Test single file staging: create README.md and untracked.txt
     console.log('[Test 4] Testing single-file staging with "git add README.md push -m -commit \"updated\""...');
     fs.writeFileSync(path.join(localProject, 'README.md'), '# Rapidfire Test Repo\n', 'utf8');
     fs.writeFileSync(path.join(localProject, 'untracked.txt'), 'Do not stage me\n', 'utf8');
@@ -131,7 +120,6 @@ async function runTests() {
     assert(statusAfterSingle.includes('untracked.txt'), 'untracked.txt should remain untracked');
     assert(!statusAfterSingle.includes('README.md'), 'README.md should be committed');
 
-    // Test pushing to a new branch with -2nd branch syntax
     console.log('[Test 5] Testing custom branch creation with "git add . push -2nd branch -commit \"new fix\""...');
     fs.writeFileSync(path.join(localProject, 'fix.js'), 'console.log("Bug fix");\n', 'utf8');
 
@@ -142,13 +130,11 @@ async function runTests() {
     const currentBranch = runCapture('git branch --show-current', { cwd: localProject }).trim();
     assert.strictEqual(currentBranch, '2nd', 'Active branch should now be 2nd');
 
-    // Test clean working tree push
     console.log('[Test 6] Testing push when working tree has no changes...');
     const res3 = await handlePush('push -m "no changes"', { cwd: localProject });
     assert(res3.success, 'Push on clean working tree should succeed cleanly');
     assert.strictEqual(res3.commitMade, false, 'No new commit should be created when clean');
 
-    // Test 7: Pushing a brand-new branch when working tree is clean
     console.log('[Test 7] Testing pushing new branch with clean working tree...');
     const resNewBranchClean = await handlePush('git add . push -b branch3 -commit "README.md update"', { cwd: localProject });
     assert(resNewBranchClean.success, 'Push to new branch branch3 should succeed');
@@ -156,7 +142,6 @@ async function runTests() {
     const branch3RemoteExists = runCapture('git rev-parse --verify origin/branch3', { cwd: localProject }).trim();
     assert(branch3RemoteExists, 'Remote origin/branch3 should exist after push');
 
-    // Test 8: Pushing back to main using -m -commit from branch3
     console.log('[Test 8] Testing push back to main with "git add . push -m -commit \"switch back to main\""...');
     fs.writeFileSync(path.join(localProject, 'main_update.js'), 'console.log("Main update");\n', 'utf8');
 

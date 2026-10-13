@@ -1,25 +1,17 @@
 const https = require('https');
 const { spawnSync } = require('child_process');
 
-/**
- * Parses markdown/text to extract suggested Python (pip) and Node (npm) packages.
- *
- * @param {string} text Text or markdown response from AI
- * @returns {{ ecosystem: 'python'|'node', packages: string[] } | null}
- */
 function extractDependencies(text) {
   if (!text) return null;
 
   const pythonPkgs = new Set();
   const nodePkgs = new Set();
 
-  // 1. Detect pip install lines
   const pipMatches = text.matchAll(/(?:pip|pip3)\s+install\s+([^#\n\r`]+)/gi);
   for (const match of pipMatches) {
     const rawTokens = match[1].trim().split(/\s+/);
     for (let token of rawTokens) {
       token = token.trim().replace(/^['"]|['"]$/g, '');
-      // Strip version specifiers like ==, >=, <=, ~=, <, >
       const cleanName = token.split(/[<>=~]/)[0].trim();
       if (cleanName && !cleanName.startsWith('-') && !cleanName.includes('/') && !cleanName.includes('\\')) {
         pythonPkgs.add(cleanName);
@@ -27,7 +19,6 @@ function extractDependencies(text) {
     }
   }
 
-  // 2. Detect npm/yarn/pnpm install lines
   const npmMatches = text.matchAll(/(?:npm|pnpm|yarn)\s+(?:install|i|add)\s+([^#\n\r`]+)/gi);
   for (const match of npmMatches) {
     const rawTokens = match[1].trim().split(/\s+/);
@@ -40,7 +31,6 @@ function extractDependencies(text) {
     }
   }
 
-  // Return whichever ecosystem was detected (prioritizing Python if both exist, or combining)
   if (pythonPkgs.size > 0) {
     return {
       ecosystem: 'python',
@@ -58,27 +48,16 @@ function extractDependencies(text) {
   return null;
 }
 
-/**
- * Validates package name against injection attacks and verifies existence
- * on the official registry (PyPI or npm).
- *
- * @param {string} pkg Package name
- * @param {'python'|'node'} ecosystem
- * @returns {Promise<{ valid: boolean, reason?: string }>}
- */
 async function validatePackageSecurity(pkg, ecosystem = 'python') {
-  // Check 1: Strict syntax whitelist (alphanumeric, dash, underscore, dot)
   const safeRegex = /^[a-zA-Z0-9_\-\.]+$/;
   if (!safeRegex.test(pkg)) {
     return { valid: false, reason: 'Invalid package name characters (possible injection attempt).' };
   }
 
-  // Check 2: Reject dangerous or reserved names
   if (pkg.startsWith('-') || pkg.includes('..') || pkg.length > 100) {
     return { valid: false, reason: 'Malformed package specifier.' };
   }
 
-  // Check 3: Check official registry existence
   const url = ecosystem === 'python'
     ? `https://pypi.org/pypi/${encodeURIComponent(pkg)}/json`
     : `https://registry.npmjs.org/${encodeURIComponent(pkg)}`;
@@ -88,10 +67,10 @@ async function validatePackageSecurity(pkg, ecosystem = 'python') {
       const req = https.get(url, { timeout: 2500 }, (res) => {
         resolve(res.statusCode >= 200 && res.statusCode < 300);
       });
-      req.on('error', () => resolve(true)); // Allow on network drop to prevent blocking offline use
+      req.on('error', () => resolve(true));
       req.on('timeout', () => {
         req.destroy();
-        resolve(true); // Allow on timeout
+        resolve(true);
       });
     });
 
@@ -105,12 +84,6 @@ async function validatePackageSecurity(pkg, ecosystem = 'python') {
   }
 }
 
-/**
- * Prompts user to select packages to install and securely executes installation.
- *
- * @param {{ ecosystem: 'python'|'node', packages: string[] }} depInfo
- * @param {import('readline').Interface} rl
- */
 async function promptAndInstallDependencies(depInfo, rl) {
   if (!depInfo || !depInfo.packages || depInfo.packages.length === 0 || !rl) {
     return;
@@ -159,7 +132,6 @@ async function promptAndInstallDependencies(depInfo, rl) {
     }
   }
 
-  // Deduplicate
   selected = Array.from(new Set(selected));
 
   if (selected.length === 0) {
@@ -175,7 +147,6 @@ async function promptAndInstallDependencies(depInfo, rl) {
     return;
   }
 
-  // Security Verification Step
   console.log(`\n${cyan}[rapidfire-security] Verifying package safety & registry integrity...${reset}`);
   const validatedPkgs = [];
 

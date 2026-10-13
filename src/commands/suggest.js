@@ -32,7 +32,6 @@ async function handleSuggest(args, context = {}) {
     console.log('\n\x1b[32m[rapidfire-ai] Recommended Stack:\x1b[0m ' + `\x1b[1m\x1b[36m${res.stack}\x1b[0m`);
     console.log(`\x1b[2mReason: ${res.reason}\x1b[0m`);
 
-    // Interactive (Y/N) implementation prompt matching Slide 6 workflow
     if (context.rl) {
       try {
         const answer = await askQuestion(

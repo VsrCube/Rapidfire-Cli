@@ -14,7 +14,6 @@ const tmpDir = path.join(os.tmpdir(), `test_integrations_${Date.now()}`);
 fse.ensureDirSync(tmpDir);
 
 try {
-  // Test Git Leaks Hook Installation
   run('git init', { cwd: tmpDir, stdio: 'ignore' });
   const hookResult = installPrePushHook(tmpDir);
   assert(hookResult.success, 'installPrePushHook should succeed in a git repo');
@@ -25,7 +24,6 @@ try {
 
   console.log('✓ Gitleaks pre-push hook installation and verification passed.');
 
-  // Test Tool Detection Functions
   const ghInstalled = isGhInstalled();
   console.log(`  gh CLI detected on system: ${ghInstalled}`);
 

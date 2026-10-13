@@ -25,7 +25,6 @@ function handleSavePreset(args) {
       (fse.existsSync(path.join(process.cwd(), '.rapidfire.json')) &&
         readManifest(process.cwd())?.folderName === folderArg)
     ) {
-      // User is already inside the project folder!
       targetPath = process.cwd();
     } else {
       console.error(`\x1b[31m[rapidfire] Error: Target directory '${folderArg}' does not exist.\x1b[0m`);
@@ -36,7 +35,6 @@ function handleSavePreset(args) {
   const presetPath = getPresetPath(name);
   console.log(`[rapidfire] Scanning directory (${targetPath})...`);
 
-  // Check for .rapidfire.json manifest
   const manifest = readManifest(targetPath);
   if (manifest) {
     console.log(`[rapidfire] Detected stack from manifest: frontend=${manifest.frontend || 'none'}, backend=${manifest.backend || 'none'}`);

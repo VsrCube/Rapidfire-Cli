@@ -14,7 +14,6 @@ const originalCwd = process.cwd();
 process.chdir(tmpDir);
 
 try {
-  // 1. Test setup django
   console.log('[Recipe 1] Testing setup django...');
   handleSetup(['django', 'app_django']);
   const djangoPath = path.join(tmpDir, 'app_django');
@@ -27,7 +26,6 @@ try {
   assert.strictEqual(djangoManifest.frontend, null);
   console.log('✓ setup django and manifest created cleanly.');
 
-  // 2. Test setup react+node
   console.log('[Recipe 2] Testing setup react+node...');
   handleSetup(['react+node', 'app_react_node']);
   const fullstackPath = path.join(tmpDir, 'app_react_node');
@@ -41,9 +39,8 @@ try {
   assert.strictEqual(nodeManifest.backend, 'node');
   console.log('✓ setup react+node and manifest created cleanly.');
 
-  // 3. Test non-empty collision prevention
   console.log('[Collision Guard] Testing non-empty directory guard...');
-  handleSetup(['django', 'app_django']); // Should refuse
+  handleSetup(['django', 'app_django']);
   console.log('✓ Non-empty folder protection confirmed.');
 } finally {
   process.chdir(originalCwd);

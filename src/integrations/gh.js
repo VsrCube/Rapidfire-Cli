@@ -14,9 +14,6 @@ function isGhAuthenticated() {
   }
 }
 
-/**
- * Shells out to `gh repo create` to create a remote repository and link it
- */
 function createRepo(projectPath, repoName, isPrivate = false) {
   if (!isGhInstalled()) {
     return {

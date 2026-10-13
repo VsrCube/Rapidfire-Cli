@@ -9,7 +9,6 @@ const scratchDir = path.resolve(__dirname, 'scratch_venv_test');
 fse.ensureDirSync(scratchDir);
 
 try {
-  // Test venv creation
   const res = createVirtualEnvironment(scratchDir);
   assert(typeof res === 'object', 'createVirtualEnvironment must return an object');
 

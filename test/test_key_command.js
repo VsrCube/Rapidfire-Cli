@@ -4,34 +4,28 @@ const { getUserConfig, saveUserConfig } = require('../src/utils/configPath');
 
 console.log('[test_key_command] Testing key command management...');
 
-// Backup current key if any
 const origConfig = getUserConfig();
 const origKey = origConfig.geminiApiKey;
 
 try {
-  // 1. Test saving a key
   const testKey = 'test_api_key_xyz_987654321';
   handleKey([testKey]);
   const afterSave = getUserConfig();
   assert.strictEqual(afterSave.geminiApiKey, testKey, 'geminiApiKey must match saved key');
   console.log('  ✔ Key saved successfully');
 
-  // 2. Test status
   assert.doesNotThrow(() => handleKey(['status']), 'key status should run without throwing');
   console.log('  ✔ Key status checked');
 
-  // 3. Test clear
   handleKey(['clear']);
   const afterClear = getUserConfig();
   assert(!afterClear.geminiApiKey, 'geminiApiKey must be null or empty after clear');
   console.log('  ✔ Key cleared successfully');
 
-  // 4. Test status when empty
   assert.doesNotThrow(() => handleKey(['status']), 'key status when empty should run cleanly');
   console.log('  ✔ Key status when empty checked');
 
 } finally {
-  // Restore original key
   if (origKey) {
     saveUserConfig({ geminiApiKey: origKey });
   } else {

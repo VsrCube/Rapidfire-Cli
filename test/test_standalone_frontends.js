@@ -15,7 +15,6 @@ async function runTests() {
   process.chdir(tmpDir);
 
   try {
-    // 1. Test standalone react
     console.log('[Standalone 1] Testing setup react...');
     await handleSetup(['react', 'app_standalone_react']);
     const reactDir = path.join(tmpDir, 'app_standalone_react');
@@ -28,7 +27,6 @@ async function runTests() {
     assert.strictEqual(reactManifest.backend, null);
     console.log('✓ setup react verified.');
 
-    // 2. Test standalone vue
     console.log('[Standalone 2] Testing setup vue...');
     await handleSetup(['vue', 'app_standalone_vue']);
     const vueDir = path.join(tmpDir, 'app_standalone_vue');
@@ -40,7 +38,6 @@ async function runTests() {
     assert.strictEqual(vueManifest.backend, null);
     console.log('✓ setup vue verified.');
 
-    // 3. Test standalone svelte
     console.log('[Standalone 3] Testing setup svelte...');
     await handleSetup(['svelte', 'app_standalone_svelte']);
     const svelteDir = path.join(tmpDir, 'app_standalone_svelte');

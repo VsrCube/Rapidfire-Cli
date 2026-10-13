@@ -3,10 +3,6 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-/**
- * Automatically ensure user binary paths (such as ~/.local/bin) are in PATH
- * so that pip --user tools like django-admin can be detected reliably.
- */
 function ensurePath() {
   const isWindows = process.platform === 'win32';
   const delimiter = path.delimiter;
@@ -29,8 +25,8 @@ function ensurePath() {
   }
 
   if (process.platform === 'darwin') {
-    candidateDirs.push('/opt/homebrew/bin'); // Apple Silicon M1/M2/M3/M4 Homebrew
-    candidateDirs.push('/usr/local/bin');    // Intel Mac Homebrew
+    candidateDirs.push('/opt/homebrew/bin');
+    candidateDirs.push('/usr/local/bin');
   }
 
   for (const dir of candidateDirs) {
@@ -40,12 +36,8 @@ function ensurePath() {
   }
 }
 
-// Call immediately on load
 ensurePath();
 
-/**
- * Check if a binary exists and is executable in PATH
- */
 function commandExists(cmd) {
   ensurePath();
   const isWindows = process.platform === 'win32';
@@ -55,13 +47,10 @@ function commandExists(cmd) {
     execSync(checkCmd, { stdio: ['ignore', 'pipe', 'ignore'] });
     return true;
   } catch {
-    // Special fallback checks
     if (cmd === 'django-admin') {
-      // Check ~/.local/bin/django-admin directly
       const directLocal = path.join(os.homedir(), '.local', 'bin', 'django-admin');
       if (fs.existsSync(directLocal)) return true;
 
-      // Check python3 -m django
       try {
         execSync('python3 -m django --version', { stdio: ['ignore', 'pipe', 'ignore'] });
         return true;
@@ -78,9 +67,6 @@ function commandExists(cmd) {
   }
 }
 
-/**
- * Run a synchronous command with live output streaming to terminal
- */
 function run(command, options = {}) {
   ensurePath();
   const defaultOptions = {
@@ -90,9 +76,6 @@ function run(command, options = {}) {
   return execSync(command, { ...defaultOptions, ...options });
 }
 
-/**
- * Run a synchronous command and capture string output
- */
 function runCapture(command, options = {}) {
   ensurePath();
   const defaultOptions = {
@@ -103,9 +86,6 @@ function runCapture(command, options = {}) {
   return execSync(command, { ...defaultOptions, ...options }).trim();
 }
 
-/**
- * Returns the proper django-admin command invocation
- */
 function getDjangoAdminCmd() {
   ensurePath();
   const directLocal = path.join(os.homedir(), '.local', 'bin', 'django-admin');
@@ -122,9 +102,6 @@ function getDjangoAdminCmd() {
   return `${py} -m django`;
 }
 
-/**
- * Returns available Python executable across platforms ('python', 'py', 'python3')
- */
 function getPythonExecutable() {
   ensurePath();
   const candidates = process.platform === 'win32'
@@ -140,9 +117,6 @@ function getPythonExecutable() {
   return process.platform === 'win32' ? 'python' : 'python3';
 }
 
-/**
- * Creates an isolated Python virtual environment inside targetDir
- */
 function createVirtualEnvironment(targetDir) {
   const pythonCmd = getPythonExecutable();
   const venvPath = path.join(targetDir, 'venv');
@@ -164,9 +138,6 @@ function createVirtualEnvironment(targetDir) {
   }
 }
 
-/**
- * Checks if Python is available on the host machine
- */
 function hasPython() {
   ensurePath();
   const candidates = process.platform === 'win32'
@@ -182,23 +153,14 @@ function hasPython() {
   return false;
 }
 
-/**
- * Checks if Node.js runtime is installed
- */
 function hasNode() {
   return commandExists('node');
 }
 
-/**
- * Checks if npm package manager is installed
- */
 function hasNpm() {
   return commandExists('npm');
 }
 
-/**
- * Returns OS-specific installation instructions for Python
- */
 function getPythonInstallInstructions() {
   if (process.platform === 'win32') {
     return '  • Windows: Run "winget install Python.Python.3.12" or download from https://python.org';
@@ -209,9 +171,6 @@ function getPythonInstallInstructions() {
   }
 }
 
-/**
- * Returns OS-specific installation instructions for Node.js (LTS) and npm
- */
 function getNodeInstallInstructions() {
   if (process.platform === 'win32') {
     return '  • Windows: Run "winget install OpenJS.NodeJS.LTS" or download from https://nodejs.org';
@@ -222,9 +181,6 @@ function getNodeInstallInstructions() {
   }
 }
 
-/**
- * Proactively verifies prerequisites for scaffolding recipes
- */
 function checkPrerequisites({ requiresNode = false, requiresPython = false, requiresDjango = false } = {}) {
   const missing = [];
   const instructions = [];
@@ -276,4 +232,3 @@ module.exports = {
   getNodeInstallInstructions,
   checkPrerequisites
 };
-

@@ -4,7 +4,6 @@ const { askGemini, suggestStack, SUPPORTED_STACKS, hasApiKey, getApiKey } = requ
 console.log('--- TEST: AI INTEGRATION & EXPANDED STACKS ---');
 
 async function runAiTests() {
-  // 1. Verify all 10 supported stacks
   assert(SUPPORTED_STACKS.includes('react+fastapi'));
   assert(SUPPORTED_STACKS.includes('react+django'));
   assert(SUPPORTED_STACKS.includes('react+node'));
@@ -20,20 +19,17 @@ async function runAiTests() {
   assert.strictEqual(SUPPORTED_STACKS.length, 13, 'Must support 13 recipes including standalone frontends');
   console.log('✓ All 13 supported recipes verified in AI stack registry.');
 
-  // 2. Verify API key resolution
   assert(hasApiKey(), 'Should detect persistent Gemini API key');
   const key = getApiKey();
   assert(key && key.length > 10, 'Should retrieve valid API key');
   console.log('✓ Persistent API key resolution verified.');
 
-  // 3. Test Live Gemini Query with configured key
   console.log('Testing live Gemini ask query...');
   const liveAsk = await askGemini('Respond with only the word OK');
   assert(liveAsk.success, 'Live Gemini query should succeed with configured key');
   assert(liveAsk.text && liveAsk.text.length > 0, 'Should return text response');
   console.log(`✓ Live Gemini query succeeded: "${liveAsk.text.trim()}"`);
 
-  // 4. Test Live Stack Suggestion
   console.log('Testing live Gemini stack suggestion...');
   const liveSuggest = await suggestStack('A high-performance async REST API with automatic Swagger docs');
   assert(liveSuggest.success, 'Live suggestion should succeed');

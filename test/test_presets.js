@@ -15,7 +15,6 @@ const destProject = path.join(tmpRoot, 'dest_project');
 fse.ensureDirSync(srcProject);
 
 try {
-  // 1. Create a dummy project with a manifest and some files
   writeManifest(srcProject, {
     frontend: 'react',
     backend: 'node',
@@ -25,11 +24,9 @@ try {
   fse.ensureDirSync(path.join(srcProject, 'config'));
   fse.writeFileSync(path.join(srcProject, 'config', 'app.json'), '{"port": 3000}', 'utf8');
 
-  // Add dummy node_modules (which must be ignored!)
   fse.ensureDirSync(path.join(srcProject, 'node_modules', 'fake'));
   fse.writeFileSync(path.join(srcProject, 'node_modules', 'fake', 'index.js'), 'dummy');
 
-  // 2. Save preset
   const presetName = `test_p_${Date.now()}`;
   handleSavePreset([presetName, srcProject]);
 
@@ -41,7 +38,6 @@ try {
   assert.strictEqual(presetData.manifest.backend, 'node');
   assert(!presetData.files.some(f => f.path.includes('node_modules')), 'Must exclude node_modules');
 
-  // 3. Load preset into destination
   handleLoadPreset([presetName, destProject]);
 
   assert(fse.existsSync(path.join(destProject, 'index.js')), 'Restored index.js must exist');
@@ -52,7 +48,6 @@ try {
   assert.strictEqual(restoredManifest.frontend, 'react');
   assert.strictEqual(restoredManifest.backend, 'node');
 
-  // Clean up saved preset file
   fse.removeSync(presetFile);
   console.log('✓ Preset serialization, deserialization, and manifest preservation verified.');
 } finally {

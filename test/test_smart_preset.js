@@ -22,11 +22,9 @@ fse.writeFileSync(path.join(appFolder, 'test.txt'), 'hello', 'utf8');
 const originalCwd = process.cwd();
 
 try {
-  // Simulate user running: cd folderm1
   process.chdir(appFolder);
   assert.strictEqual(path.basename(process.cwd()), 'folderm1');
 
-  // Test: user runs `save preset p_test folderm1` while already inside folderm1!
   console.log('Testing: save preset while already inside folderm1...');
   const presetName = `smart_p_${Date.now()}`;
   handleSavePreset([presetName, 'folderm1']);
@@ -38,7 +36,6 @@ try {
   assert.strictEqual(presetData.manifest.folderName, 'folderm1');
   assert(presetData.files.some(f => f.path === 'test.txt'));
 
-  // Clean up preset
   fse.removeSync(presetFile);
   console.log('✓ Smart preset directory resolution verified successfully.');
 } finally {

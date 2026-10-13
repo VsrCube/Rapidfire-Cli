@@ -7,9 +7,6 @@ function isGitleaksInstalled() {
   return commandExists('gitleaks');
 }
 
-/**
- * Installs an automated pre-push hook inside project's .git/hooks directory
- */
 function installPrePushHook(projectPath) {
   const gitDir = path.join(projectPath, '.git');
   if (!fs.existsSync(gitDir)) {

@@ -14,7 +14,6 @@ async function runTests() {
   fse.ensureDirSync(tmpRoot);
 
   try {
-    // --- SCENARIO 1: Nested Git Prevention ---
     console.log('[Test 1] Testing nested Git prevention inside existing repository...');
     const parentRepo = path.join(tmpRoot, 'my_monorepo');
     fse.ensureDirSync(parentRepo);
@@ -26,7 +25,6 @@ async function runTests() {
     process.chdir(parentRepo);
 
     try {
-      // User creates <fr> and <be> separately inside their monorepo
       console.log('  -> Scaffolding frontend (react) inside parent repo...');
       await handleSetup(['react', 'frontend'], { ask: async () => 'y' });
 
@@ -36,7 +34,6 @@ async function runTests() {
       assert.ok(fse.existsSync(path.join(parentRepo, 'frontend', 'package.json')), 'Frontend package.json should exist');
       assert.ok(fse.existsSync(path.join(parentRepo, 'backend', 'main.py')), 'Backend main.py should exist');
 
-      // CRITICAL ASSERTION: Neither subfolder must contain a nested .git directory!
       assert.strictEqual(
         fse.existsSync(path.join(parentRepo, 'frontend', '.git')),
         false,
@@ -48,7 +45,6 @@ async function runTests() {
         'Backend must NOT have a nested .git folder'
       );
 
-      // Verify parent repo can stage both without git submodule warnings
       run('git add .', { cwd: parentRepo, stdio: 'ignore' });
       const statusOutput = runCapture('git status --porcelain', { cwd: parentRepo });
       assert.ok(statusOutput.includes('frontend/package.json'), 'Parent git should track frontend files directly');
@@ -58,7 +54,6 @@ async function runTests() {
       process.chdir(originalCwd);
     }
 
-    // --- SCENARIO 2: Standalone Setup with User Rejection ('n') ---
     console.log('\n[Test 2] Testing standalone setup when user declines local Git init (n)...');
     const nonGitDir = path.join(tmpRoot, 'standalone_area');
     fse.ensureDirSync(nonGitDir);
@@ -78,7 +73,6 @@ async function runTests() {
       process.chdir(originalCwd);
     }
 
-    // --- SCENARIO 3: Standalone Setup with User Approval ('y') ---
     console.log('\n[Test 3] Testing standalone setup when user approves local Git init (y)...');
     process.chdir(nonGitDir);
 
@@ -101,7 +95,6 @@ async function runTests() {
       process.chdir(originalCwd);
     }
 
-    // --- SCENARIO 4: Push in non-git directory with User Rejection ('n') ---
     console.log('\n[Test 4] Testing push rejection (n) in non-git directory...');
     const nonGitPushDir = path.join(tmpRoot, 'push_no_git_dir');
     fse.ensureDirSync(nonGitPushDir);
@@ -121,13 +114,11 @@ async function runTests() {
     );
     console.log('✔ Rejected push aborts cleanly with zero filesystem modifications.');
 
-    // --- SCENARIO 5: Push in non-git directory with User Approval ('y') ---
     console.log('\n[Test 5] Testing push approval (y) in non-git directory...');
     const pushApproveDir = path.join(tmpRoot, 'push_approve_git_dir');
     fse.ensureDirSync(pushApproveDir);
     fs.writeFileSync(path.join(pushApproveDir, 'main.js'), 'console.log("init test");', 'utf8');
 
-    // Run push with approval (it will initialize git, install hooks, and stage files)
     const pushResApprove = await handlePush('push -m "initial push"', {
       cwd: pushApproveDir,
       ask: async (question) => {

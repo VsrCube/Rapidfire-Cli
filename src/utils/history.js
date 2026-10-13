@@ -3,9 +3,6 @@ const path = require('path');
 const os = require('os');
 const { getRapidfireDir } = require('./configPath');
 
-/**
- * Returns potential history file locations for the current host operating system
- */
 function getHostHistoryPaths() {
   const home = os.homedir();
   const paths = [];
@@ -16,22 +13,17 @@ function getHostHistoryPaths() {
     paths.push(path.join(appData, 'Microsoft', 'Windows', 'PowerShell', 'PSReadLine', 'ConsoleHost_history.txt'));
     paths.push(path.join(home, '.bash_history'));
   } else {
-    // Linux and macOS
     paths.push(path.join(home, '.local', 'share', 'powershell', 'PSReadLine', 'ConsoleHost_history.txt'));
     paths.push(path.join(home, '.bash_history'));
     paths.push(path.join(home, '.zsh_history'));
   }
 
-  // RapidFire dedicated persistent history
   const rfDir = getRapidfireDir ? getRapidfireDir() : path.join(home, '.rapidfire');
   paths.push(path.join(rfDir, 'history.txt'));
 
   return paths;
 }
 
-/**
- * Resolves the primary active host shell history file based on active shell and mtime
- */
 function getActiveHostHistoryPath() {
   const home = os.homedir();
   const isWindows = process.platform === 'win32';
@@ -64,7 +56,6 @@ function getActiveHostHistoryPath() {
     if (fs.existsSync(bashPath)) return bashPath;
   }
 
-  // Fallback: prioritize the candidate that exists and was most recently modified
   const candidates = [
     path.join(home, '.local', 'share', 'powershell', 'PSReadLine', 'ConsoleHost_history.txt'),
     path.join(home, '.bash_history'),
@@ -86,9 +77,6 @@ function getActiveHostHistoryPath() {
   return best;
 }
 
-/**
- * Finds the primary active host history file that exists on disk
- */
 function getPrimaryHostHistoryPath() {
   const active = getActiveHostHistoryPath();
   if (active) return active;
@@ -99,31 +87,24 @@ function getPrimaryHostHistoryPath() {
       return p;
     }
   }
-  // Fallback to RapidFire default history path
   const home = os.homedir();
   const rfDir = getRapidfireDir ? getRapidfireDir() : path.join(home, '.rapidfire');
   return path.join(rfDir, 'history.txt');
 }
 
-/**
- * Sanitizes command lines, filtering out binary/corrupt lines, internal markers, and empty spaces
- */
 function sanitizeCommandLine(raw) {
   if (!raw || typeof raw !== 'string') return null;
   let line = raw.trim();
   if (!line) return null;
 
-  // Filter lines containing non-printable binary control characters
   if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/.test(line)) {
     return null;
   }
 
-  // Filter out internal sentinel markers, test artifacts, or rapidfire internal markers
   if (line.includes('__RF_DONE__') || line.includes('__RF_') || line.includes('__rapidfire_')) {
     return null;
   }
 
-  // Filter Zsh timestamp prefix (: 1620000000:0;command)
   const zshMatch = line.match(/^:\s*\d+:\d+;(.*)$/);
   if (zshMatch) {
     line = zshMatch[1].trim();
@@ -132,18 +113,12 @@ function sanitizeCommandLine(raw) {
   return line;
 }
 
-/**
- * Reads recent commands from host and RapidFire history files
- * Returns a reverse-chronological array ready for readline.history (index 0 = newest)
- */
 function loadHistory(limit = 100) {
   const historyLines = [];
   const home = os.homedir();
   const rfDir = getRapidfireDir ? getRapidfireDir() : path.join(home, '.rapidfire');
   const rfPath = path.join(rfDir, 'history.txt');
 
-  // Load order: RapidFire persistent history first, then active host shell history second
-  // This ensures host commands executed immediately before starting RapidFire (e.g. git add .) are newest
   const pathsToLoad = [];
   if (fs.existsSync(rfPath)) {
     pathsToLoad.push(rfPath);
@@ -153,7 +128,6 @@ function loadHistory(limit = 100) {
   if (hostPath && hostPath !== rfPath && fs.existsSync(hostPath)) {
     pathsToLoad.push(hostPath);
   } else if (!pathsToLoad.length) {
-    // If neither found, scan candidate list
     const candidates = getHostHistoryPaths();
     for (const p of candidates) {
       if (fs.existsSync(p)) {
@@ -174,7 +148,6 @@ function loadHistory(limit = 100) {
         historyLines.push(clean);
       }
     } catch {
-      // Ignore unreadable history files
     }
   }
 
@@ -182,7 +155,6 @@ function loadHistory(limit = 100) {
     return [];
   }
 
-  // Deduplicate consecutive lines while preserving order
   const deduped = [];
   let prev = null;
   for (const cmd of historyLines) {
@@ -192,17 +164,11 @@ function loadHistory(limit = 100) {
     }
   }
 
-  // Take the most recent `limit` commands
   const recent = deduped.slice(-limit);
 
-  // Readline expects index 0 to be the most recent command (Up Arrow starts at 0)
   return recent.reverse();
 }
 
-/**
- * Appends commands executed during the RapidFire session back to disk
- * Saves to both the primary host history and ~/.rapidfire/history.txt
- */
 function saveSessionHistory(sessionCommands) {
   if (!Array.isArray(sessionCommands) || sessionCommands.length === 0) {
     return;
@@ -213,7 +179,6 @@ function saveSessionHistory(sessionCommands) {
   for (const raw of sessionCommands) {
     const clean = sanitizeCommandLine(raw);
     if (!clean) continue;
-    // Don't record internal exit commands
     if (clean === 'exit' || clean === 'quit') continue;
     if (clean !== last) {
       cleanCommands.push(clean);
@@ -225,7 +190,6 @@ function saveSessionHistory(sessionCommands) {
 
   const textToAppend = cleanCommands.join('\n') + '\n';
 
-  // 1. Save to RapidFire persistent history
   const home = os.homedir();
   const rfDir = getRapidfireDir ? getRapidfireDir() : path.join(home, '.rapidfire');
   try {
@@ -236,7 +200,6 @@ function saveSessionHistory(sessionCommands) {
     fs.appendFileSync(rfHistPath, textToAppend, 'utf8');
   } catch {}
 
-  // 2. Append to host shell history file (e.g. ConsoleHost_history.txt / .bash_history)
   const hostPath = getPrimaryHostHistoryPath();
   if (hostPath && !hostPath.includes('.rapidfire')) {
     try {

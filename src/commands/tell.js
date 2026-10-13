@@ -3,10 +3,6 @@ const fse = require('fs-extra');
 const { instructGemini, hasApiKey } = require('../ai/gemini');
 const { ensureOrPromptApiKey } = require('./key');
 
-/**
- * Handle 'tell' command: instructs AI to generate code files with preview & confirmation
- * Usage: tell create 2 cpp files named m1 m2
- */
 async function handleTell(args, context = {}) {
   const instruction = args.join(' ').trim();
 
@@ -37,11 +33,9 @@ async function handleTell(args, context = {}) {
 
   const sanitizedFiles = [];
   for (const file of result.files) {
-    // Sanitize path to prevent escaping cwd
     const relativeClean = path.normalize(file.filename).replace(/^(\.\.[\/\\])+/, '');
     const targetPath = path.resolve(process.cwd(), relativeClean);
 
-    // Verify it stays within current directory
     if (!targetPath.startsWith(process.cwd())) {
       console.warn(`\x1b[33m⚠ Skipped unsafe file path: ${file.filename}\x1b[0m`);
       continue;
@@ -58,7 +52,6 @@ async function handleTell(args, context = {}) {
     return;
   }
 
-  // Ask confirmation (Y/N)
   let answer = 'n';
   const promptText = `\nConfirm file generation? (Y/N): `;
 

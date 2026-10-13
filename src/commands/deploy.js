@@ -2,13 +2,6 @@ const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-/**
- * Handles the 'deploy' command in Rapidfire.
- * Automatically locates frontend root, deploys via Vercel,
- * extracts the live production URL, and prints a formatted banner.
- *
- * @param {string[]} args Optional target folder
- */
 async function handleDeploy(args = []) {
   const bold = '\x1b[1m';
   const green = '\x1b[32m';
@@ -23,7 +16,6 @@ async function handleDeploy(args = []) {
     targetDir = path.resolve(process.cwd(), args[0]);
   }
 
-  // If target folder contains a 'frontend' subfolder with package.json, deploy that
   const frontendSub = path.join(targetDir, 'frontend');
   if (fs.existsSync(path.join(frontendSub, 'package.json'))) {
     targetDir = frontendSub;
@@ -44,7 +36,6 @@ async function handleDeploy(args = []) {
   console.log(`${cyan}[rapidfire-deploy] Contacting Vercel deployment engine...${reset}`);
 
   try {
-    // Run npx vercel in non-interactive production mode
     const output = execSync('npx --yes vercel --prod --yes', {
       cwd: targetDir,
       encoding: 'utf8',
@@ -52,7 +43,6 @@ async function handleDeploy(args = []) {
       timeout: 120000
     });
 
-    // Extract live deployment URL from output
     const match = output.match(/https:\/\/[a-zA-Z0-9.-]+\.vercel\.app/i) || output.match(/https:\/\/[a-zA-Z0-9.-]+/);
     const liveUrl = match ? match[0] : null;
 
@@ -68,7 +58,6 @@ async function handleDeploy(args = []) {
   } catch (err) {
     const combinedMsg = (err.stdout || '') + (err.stderr || '') + (err.message || '');
 
-    // Check if error is due to not being logged in
     if (combinedMsg.includes('login') || combinedMsg.includes('authentication') || combinedMsg.includes('Not authenticated') || combinedMsg.includes('credential')) {
       console.log(`\n${yellow}╔════════════════════════════════════════════════════════════════╗${reset}`);
       console.log(`${yellow}║             VERCEL AUTHENTICATION REQUIRED                     ║${reset}`);

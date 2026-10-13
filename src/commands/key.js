@@ -1,15 +1,6 @@
 const { saveUserConfig, getUserConfig } = require('../utils/configPath');
 const { getApiKey, getActiveAiConfig, detectProvider } = require('../ai/provider');
 
-/**
- * Handle 'key' command: configure, inspect, or clear the AI API Key
- * Supports auto-detection for Groq, OpenAI, Gemini, and custom providers
- * Usage:
- *   key <api_key>          - Save key and auto-detect provider (defaulting to free-tier model)
- *   key model <model_name> - Optional custom model override
- *   key status             - Check active provider, model, key, and source
- *   key clear              - Clear saved key and configuration
- */
 function handleKey(args) {
   const sub = args[0]?.trim();
 
@@ -66,7 +57,6 @@ function handleKey(args) {
     return;
   }
 
-  // Optional model override: key model <name>
   if (sub.toLowerCase() === 'model') {
     const modelName = args[1]?.trim();
     if (!modelName) {
@@ -80,7 +70,6 @@ function handleKey(args) {
     return;
   }
 
-  // Treat input as API key to save with auto-detection
   const newKey = sub;
   if (newKey.length < 8) {
     console.log(`\x1b[31m[rapidfire] Error: API key appears too short or invalid.\x1b[0m`);
@@ -90,7 +79,7 @@ function handleKey(args) {
   const detected = detectProvider(newKey);
   saveUserConfig({
     apiKey: newKey,
-    geminiApiKey: newKey, // backwards compatibility
+    geminiApiKey: newKey,
     provider: detected.provider,
     model: detected.model
   });
@@ -103,10 +92,6 @@ function handleKey(args) {
   console.log(`  Active:    \x1b[36m${masked}\x1b[0m\n`);
 }
 
-/**
- * Proactively checks if an API key is set; if not, recommends it and prompts
- * user to input it interactively, saving it permanently.
- */
 async function ensureOrPromptApiKey(context = {}) {
   const activeKey = getApiKey();
   if (activeKey) return true;

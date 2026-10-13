@@ -4,9 +4,6 @@ const { isGhInstalled, isGhAuthenticated, createRepo } = require('../integration
 const { installPrePushHook } = require('../integrations/gitleaks');
 const { promptConfirmation } = require('../utils/gitContext');
 
-/**
- * Splits command line or args array preserving double and single quotes
- */
 function parseTokensWithQuotes(input) {
   const raw = Array.isArray(input) ? input.join(' ') : (input || '');
   const regex = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
@@ -18,27 +15,17 @@ function parseTokensWithQuotes(input) {
   return tokens;
 }
 
-/**
- * Parses unified push arguments from various forms:
- *   - git add . push -branch main -commit "message"
- *   - add <files> push -m -commit "message"
- *   - push -m "message"
- *   - push -b <branch> -m "message"
- *   - push <files> -commit "message"
- */
 function parsePushArgs(input) {
   const tokens = parseTokensWithQuotes(input);
   let files = [];
   let branch = null;
   let message = null;
 
-  // Find index of 'push' keyword if present
   let pushIdx = tokens.findIndex((t) => t.toLowerCase() === 'push');
   if (pushIdx === -1) {
     pushIdx = 0;
   }
 
-  // Pre-push tokens: e.g. "git add ." or "add file1.js file2.js"
   const prePush = tokens.slice(0, pushIdx);
   if (prePush.length > 0) {
     let fileCandidates = [];
@@ -52,10 +39,8 @@ function parsePushArgs(input) {
     }
   }
 
-  // Post-push tokens
   const postPush = tokens.slice(pushIdx + 1);
 
-  // Check if an explicit commit flag exists in postPush (-commit, --commit, -message, --message)
   const hasExplicitCommitFlag = postPush.some((t) => {
     const l = t.toLowerCase();
     return (
@@ -75,7 +60,6 @@ function parsePushArgs(input) {
     const token = postPush[i];
     const lower = token.toLowerCase();
 
-    // Branch flag: -b, -branch, --branch, -brach (typo), -branchname, --branchname
     if (
       lower === '-b' ||
       lower === '-branch' ||
@@ -109,48 +93,39 @@ function parsePushArgs(input) {
       i++;
       continue;
     } else if (token.startsWith('-') && i + 1 < postPush.length && postPush[i + 1].toLowerCase() === 'branch') {
-      // Handles e.g. -2nd branch or -main branch
       branch = token.replace(/^-+/, '');
       i += 2;
       continue;
     } else if (/^-+(?:branch|brach)(\d+)$/i.test(token)) {
-      // Attached digit branches: e.g. -branch3, -brach3 -> branch3
       const num = token.match(/^-+(?:branch|brach)(\d+)$/i)[1];
       branch = `branch${num}`;
       i++;
       continue;
     } else if (/^-+b(\d+)$/i.test(token)) {
-      // Attached digit shorthand: e.g. -b3 -> branch3
       const num = token.match(/^-+b(\d+)$/i)[1];
       branch = `branch${num}`;
       i++;
       continue;
     } else if (/^-+(?:branch|brach)[-_](.+)$/i.test(token)) {
-      // Attached hyphen/underscore branches: e.g. -branch-feature, -brach_v2
       branch = token.match(/^-+(?:branch|brach)[-_](.+)$/i)[1];
       i++;
       continue;
     } else if (lower === '-m') {
-      // When -commit is also present, -m is interpreted as targeting branch 'main'
       if (hasExplicitCommitFlag) {
         branch = 'main';
         i++;
         continue;
       } else if (i + 1 < postPush.length && !postPush[i + 1].startsWith('-')) {
-        // Standard git syntax: push -m "commit message"
         message = postPush[i + 1];
         i += 2;
         continue;
       } else {
-        // Standalone -m (e.g. push -m or push -m -b feature): targets branch 'main'
         branch = 'main';
         i++;
         continue;
       }
     }
 
-    // Commit message flags:
-    // Can be: -commit, --commit, -message, --message
     if (lower === '-commit' || lower === '--commit' || lower === '-message' || lower === '--message') {
       if (i + 1 < postPush.length && !postPush[i + 1].startsWith('-')) {
         message = postPush[i + 1];
@@ -177,7 +152,6 @@ function parsePushArgs(input) {
       continue;
     }
 
-    // Positional file token if it does not start with flag
     if (!token.startsWith('-')) {
       files.push(token);
     }
@@ -185,7 +159,6 @@ function parsePushArgs(input) {
     i++;
   }
 
-  // Default files to ['.'] if none specified
   if (files.length === 0) {
     files = ['.'];
   }
@@ -197,9 +170,6 @@ function parsePushArgs(input) {
   };
 }
 
-/**
- * Executes unified staging, committing, and pushing with automatic GitHub repo creation
- */
 async function handlePush(rawArgs, context = {}) {
   const cyan = '\x1b[36m';
   const green = '\x1b[32m';
@@ -212,7 +182,6 @@ async function handlePush(rawArgs, context = {}) {
   const cwd = context.cwd || process.cwd();
   const parsed = parsePushArgs(rawArgs);
 
-  // 1. Verify / Initialize Git repository
   let inGit = false;
   try {
     const res = runCapture('git rev-parse --is-inside-work-tree', { cwd });
@@ -241,7 +210,6 @@ async function handlePush(rawArgs, context = {}) {
     installPrePushHook(cwd);
   }
 
-  // 2. Resolve target branch
   let currentBranch = 'main';
   try {
     currentBranch = runCapture('git branch --show-current', { cwd }).trim() || 'main';
@@ -260,7 +228,6 @@ async function handlePush(rawArgs, context = {}) {
         try {
           run(`git checkout "${parsed.branch}"`, { cwd, stdio: 'ignore' });
         } catch {
-          // If checkout failed due to uncommitted working tree changes, safely stash, switch, and pop
           let stashed = false;
           try {
             const stashRes = runCapture('git stash create', { cwd }).trim();
@@ -288,7 +255,6 @@ async function handlePush(rawArgs, context = {}) {
     }
   }
 
-  // 3. Stage specified files
   const addTarget = parsed.files.map((f) => `"${f}"`).join(' ');
   console.log(`\n${cyan}[rapidfire-git] Staging files:${reset} git add ${parsed.files.join(' ')}`);
   try {
@@ -298,7 +264,6 @@ async function handlePush(rawArgs, context = {}) {
     return { success: false, error: addErr.message };
   }
 
-  // 4. Resolve commit message
   let commitMessage = parsed.message;
   if (!commitMessage) {
     if (context.ask && typeof context.ask === 'function') {
@@ -312,7 +277,6 @@ async function handlePush(rawArgs, context = {}) {
     }
   }
 
-  // 5. Commit staged changes if any exist
   let commitMade = false;
   let statusOutput = '';
   try {
@@ -333,7 +297,6 @@ async function handlePush(rawArgs, context = {}) {
     console.log(`${dim}[rapidfire-git] Working tree clean; no uncommitted changes found to commit.${reset}`);
   }
 
-  // 6. Check for remote 'origin'
   let hasRemote = false;
   try {
     const remotes = runCapture('git remote', { cwd }).trim();
@@ -364,10 +327,8 @@ async function handlePush(rawArgs, context = {}) {
     }
   }
 
-  // 7. Push to remote
   console.log(`${cyan}[rapidfire-git] Pushing to origin/${targetBranch}...${reset}`);
 
-  // Inspect remote branch existence and local unpushed commits before pushing
   let remoteBranchExists = false;
   try {
     runCapture(`git rev-parse --verify "origin/${targetBranch}"`, { cwd });

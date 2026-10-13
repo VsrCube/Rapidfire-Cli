@@ -31,9 +31,6 @@ function getAskHistory() {
   return askHistory;
 }
 
-/**
- * Detects AI provider and default free-tier / fast model from API key prefix
- */
 function detectProvider(apiKey) {
   if (!apiKey || typeof apiKey !== 'string') {
     return { provider: 'gemini', model: 'gemini-2.5-flash', name: 'Gemini' };
@@ -41,7 +38,6 @@ function detectProvider(apiKey) {
 
   const key = apiKey.trim();
 
-  // Groq API keys (gsk_...) - fast free tier
   if (key.startsWith('gsk_')) {
     return {
       provider: 'groq',
@@ -51,7 +47,6 @@ function detectProvider(apiKey) {
     };
   }
 
-  // OpenAI API keys (sk-...)
   if (key.startsWith('sk-')) {
     return {
       provider: 'openai',
@@ -61,7 +56,6 @@ function detectProvider(apiKey) {
     };
   }
 
-  // Gemini API keys (AIza...) or other
   return {
     provider: 'gemini',
     model: 'gemini-2.5-flash',
@@ -85,21 +79,18 @@ function readEnvFileKey() {
 }
 
 function getApiKey() {
-  // 1. Explicitly configured user key takes precedence
   const userConfig = getUserConfig();
   if (userConfig) {
     if (userConfig.apiKey) return userConfig.apiKey;
     if (userConfig.geminiApiKey) return userConfig.geminiApiKey;
   }
 
-  // 2. Environment variables
   if (process.env.AI_API_KEY) return process.env.AI_API_KEY;
   if (process.env.OPENAI_API_KEY) return process.env.OPENAI_API_KEY;
   if (process.env.GROQ_API_KEY) return process.env.GROQ_API_KEY;
   if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
   if (process.env.RAPIDFIRE_API_KEY) return process.env.RAPIDFIRE_API_KEY;
 
-  // 3. Local .env file
   const envKey = readEnvFileKey();
   if (envKey) return envKey;
 
@@ -110,9 +101,6 @@ function hasApiKey() {
   return Boolean(getApiKey());
 }
 
-/**
- * Returns active configuration including provider, model, and source
- */
 function getActiveAiConfig() {
   const key = getApiKey();
   const detected = detectProvider(key);
@@ -155,9 +143,6 @@ async function retryOperation(fn, retries = 2, delay = 800) {
   throw lastError;
 }
 
-/**
- * Native REST request helper for OpenAI-compatible endpoints (Groq, OpenAI, Ollama)
- */
 function sendOpenAiRequest({ endpoint, apiKey, model, messages, systemInstruction }) {
   return new Promise((resolve, reject) => {
     try {
@@ -225,9 +210,6 @@ function sendOpenAiRequest({ endpoint, apiKey, model, messages, systemInstructio
   });
 }
 
-/**
- * Gemini SDK caller with automatic fallback between 2.5-flash and 3.5-flash-lite
- */
 async function queryGemini({ apiKey, modelName, prompt, systemInstruction, history = [], isChat = false }) {
   const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -273,9 +255,6 @@ async function queryGemini({ apiKey, modelName, prompt, systemInstruction, histo
   }
 }
 
-/**
- * Universal query runner across active AI provider
- */
 async function queryAi({ prompt, systemInstruction, history = [], isChat = false }) {
   const config = getActiveAiConfig();
   if (!config.apiKey) {
@@ -303,7 +282,6 @@ async function queryAi({ prompt, systemInstruction, history = [], isChat = false
     }));
   }
 
-  // Default: Gemini
   return retryOperation(() => queryGemini({
     apiKey: config.apiKey,
     modelName: config.model,
@@ -325,9 +303,6 @@ function formatErrorMessage(err) {
   return `AI query failed: ${msg.split('\n')[0]}`;
 }
 
-/**
- * Ask a technical developer question inline in terminal with memory and retry
- */
 async function askAI(question) {
   const config = getActiveAiConfig();
   if (!config.apiKey) {
@@ -364,9 +339,6 @@ async function askAI(question) {
   }
 }
 
-/**
- * Heuristic fallback for stack recommendations
- */
 function fallbackStackSelector(description) {
   const desc = (description || '').toLowerCase();
   if (desc.includes('fastapi') || desc.includes('async') || desc.includes('swagger') || desc.includes('machine learning') || desc.includes('ai')) {
@@ -411,9 +383,6 @@ function fallbackStackSelector(description) {
   };
 }
 
-/**
- * Suggest a stack strictly constrained to RapidFire's supported recipes
- */
 async function suggestStack(description) {
   const config = getActiveAiConfig();
   if (!config.apiKey) {
@@ -478,9 +447,6 @@ Respond with ONLY a valid JSON object in this exact format, with no markdown cod
   }
 }
 
-/**
- * Deterministic fallback generator for tell command
- */
 function fallbackInstructGenerator(instruction) {
   const text = (instruction || '').trim();
   const lower = text.toLowerCase();
@@ -511,7 +477,6 @@ function fallbackInstructGenerator(instruction) {
     defaultLang = 'c';
   }
 
-  // Match "named <names>"
   const namedMatch = text.match(/named\s+([^,.;\n]+)/i);
   let names = [];
 
@@ -562,9 +527,6 @@ function fallbackInstructGenerator(instruction) {
   };
 }
 
-/**
- * Generates code files based on user instruction
- */
 async function instructAI(instruction) {
   const config = getActiveAiConfig();
   if (!config.apiKey) {
@@ -629,9 +591,6 @@ You MUST respond ONLY with valid JSON in this exact schema, without markdown for
   }
 }
 
-/**
- * Detects programming language from file extension
- */
 function detectLanguage(ext) {
   const map = {
     '.js': 'JavaScript',
@@ -669,9 +628,6 @@ function detectLanguage(ext) {
   return map[ext.toLowerCase()] || 'Text / Source';
 }
 
-/**
- * Deterministic offline fallback explanation for a single source file
- */
 function fallbackExplainFile(filePath) {
   if (!fs.existsSync(filePath)) {
     return {
@@ -705,7 +661,6 @@ function fallbackExplainFile(filePath) {
   const lineCount = lines.length;
   const sizeKb = (stat.size / 1024).toFixed(1);
 
-  // Extract imports
   const imports = [];
   const reqMatches = rawContent.matchAll(/(?:require\(['"]([^'"]+)['"]\)|import\s+.*?from\s+['"]([^'"]+)['"])/g);
   for (const m of reqMatches) {
@@ -722,7 +677,6 @@ function fallbackExplainFile(filePath) {
     if (m[1] && !imports.includes(m[1])) imports.push(m[1]);
   }
 
-  // Extract declared functions / classes
   const symbols = [];
   const classMatches = rawContent.matchAll(/class\s+([A-Za-z0-9_]+)/g);
   for (const m of classMatches) symbols.push(`class ${m[1]}`);
@@ -733,7 +687,6 @@ function fallbackExplainFile(filePath) {
   const pyFuncMatches = rawContent.matchAll(/def\s+([A-Za-z0-9_]+)\s*\(/g);
   for (const m of pyFuncMatches) symbols.push(`def ${m[1]}()`);
 
-  // Special case for JSON metadata files
   let jsonSummary = '';
   if (ext.toLowerCase() === '.json') {
     try {
@@ -788,9 +741,6 @@ function fallbackExplainFile(filePath) {
   };
 }
 
-/**
- * Scans a directory recursively up to depth limit, filtering ignore patterns
- */
 function scanDirectoryTree(dirPath, maxDepth = 2, currentDepth = 0, state = { count: 0, items: [] }) {
   if (currentDepth > maxDepth || state.count >= 60) return state.items;
 
@@ -824,9 +774,6 @@ function scanDirectoryTree(dirPath, maxDepth = 2, currentDepth = 0, state = { co
   return state.items;
 }
 
-/**
- * Deterministic offline fallback explanation for a directory/codebase
- */
 function fallbackExplainDirectory(dirPath) {
   if (!fs.existsSync(dirPath)) {
     return {
@@ -845,7 +792,6 @@ function fallbackExplainDirectory(dirPath) {
   const baseName = path.basename(resolved);
   const items = scanDirectoryTree(resolved, 2);
 
-  // Detect tech stack from manifest files
   const stacks = [];
   const pkgPath = path.join(resolved, 'package.json');
   if (fs.existsSync(pkgPath)) {
@@ -880,7 +826,6 @@ function fallbackExplainDirectory(dirPath) {
   if (fs.existsSync(path.join(resolved, 'go.mod'))) stacks.push('Go');
   if (stacks.length === 0) stacks.push('General Codebase');
 
-  // Build tree representation
   let treeStr = '';
   for (const item of items.slice(0, 35)) {
     const indent = '  '.repeat(item.depth);
@@ -923,9 +868,6 @@ function fallbackExplainDirectory(dirPath) {
   };
 }
 
-/**
- * Explains a source file using AI with deterministic offline fallback
- */
 async function explainFile(filePath) {
   if (!fs.existsSync(filePath)) {
     return {
@@ -1002,9 +944,6 @@ Provide a clean, structured response:
   }
 }
 
-/**
- * Explains a directory architecture using AI with deterministic offline fallback
- */
 async function explainDirectory(dirPath) {
   if (!fs.existsSync(dirPath)) {
     return {

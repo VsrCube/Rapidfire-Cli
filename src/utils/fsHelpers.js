@@ -35,9 +35,6 @@ function shouldIgnore(name) {
   return DEFAULT_IGNORES.has(name) || name.startsWith('.git');
 }
 
-/**
- * Recursively walk directory and build a serializable manifest of files
- */
 function walkDirectory(dirPath, rootPath = dirPath) {
   const items = [];
   const entries = fse.readdirSync(dirPath, { withFileTypes: true });
@@ -78,9 +75,6 @@ function walkDirectory(dirPath, rootPath = dirPath) {
   return items;
 }
 
-/**
- * Serialize a directory into a preset object including .rapidfire.json manifest
- */
 function serializeDirectory(dirPath) {
   const files = walkDirectory(dirPath, dirPath);
   const manifest = readManifest(dirPath);
@@ -94,9 +88,6 @@ function serializeDirectory(dirPath) {
   };
 }
 
-/**
- * Recreate files and directories from a preset object into targetDir
- */
 function deserializeDirectory(presetData, targetDir) {
   fse.ensureDirSync(targetDir);
 
@@ -117,7 +108,6 @@ function deserializeDirectory(presetData, targetDir) {
     }
   }
 
-  // If presetData had a manifest and it wasn't already in files, ensure it is written
   if (presetData.manifest && !fse.existsSync(path.join(targetDir, '.rapidfire.json'))) {
     fse.writeJsonSync(path.join(targetDir, '.rapidfire.json'), presetData.manifest, { spaces: 2 });
   }

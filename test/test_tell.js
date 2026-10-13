@@ -7,7 +7,6 @@ const { handleTell } = require('../src/commands/tell');
 async function runTests() {
   console.log('[test_tell] Testing tell command and generative instruction...');
 
-  // 1. Fallback heuristic generator test
   const testInstruction = 'create 2 cpp files named m1 m2';
   const generated = fallbackInstructGenerator(testInstruction);
 
@@ -19,13 +18,11 @@ async function runTests() {
   assert(generated.files[0].content.includes('main()'), 'C++ file must have main function');
   console.log('  ✔ fallbackInstructGenerator accurately parsed "create 2 cpp files named m1 m2"');
 
-  // 2. Python parsing heuristic
   const pyGen = fallbackInstructGenerator('create python files named parser test');
   assert.strictEqual(pyGen.files[0].filename, 'parser.py', 'Should generate parser.py');
   assert(pyGen.files[0].content.includes('def main():'), 'Python file should have main function');
   console.log('  ✔ fallbackInstructGenerator accurately parsed Python files');
 
-  // 3. handleTell with confirmation (Y) writing into test scratch dir
   const scratchDir = path.resolve(__dirname, 'scratch_tell_test');
   fse.ensureDirSync(scratchDir);
   const origCwd = process.cwd();
@@ -42,7 +39,6 @@ async function runTests() {
     assert(fse.existsSync(path.join(scratchDir, 'm2.cpp')), 'm2.cpp must exist on disk');
     console.log('  ✔ handleTell created m1.cpp and m2.cpp on disk upon user Y confirmation');
 
-    // 4. handleTell with cancellation (N)
     fse.removeSync(path.join(scratchDir, 'm1.cpp'));
     fse.removeSync(path.join(scratchDir, 'm2.cpp'));
 

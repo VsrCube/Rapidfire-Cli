@@ -14,7 +14,6 @@ const { RapidfireRepl } = require('../src/repl');
 function runTests() {
   console.log('--- TEST: BIDIRECTIONAL TERMINAL HISTORY SYNCHRONIZATION ---');
 
-  // Test 1: getHostHistoryPaths
   console.log('[Test 1] Testing host history path detection...');
   const paths = getHostHistoryPaths();
   assert(Array.isArray(paths), 'Paths must be an array');
@@ -22,20 +21,15 @@ function runTests() {
   assert(paths.some((p) => p.includes('history')), 'Paths must contain history files');
   console.log('✓ Host history paths resolved:', paths.length, 'locations checked.');
 
-  // Test 2: sanitizeCommandLine
   console.log('[Test 2] Testing command line sanitization...');
   assert.strictEqual(sanitizeCommandLine('   git status   '), 'git status', 'Should trim whitespace');
   assert.strictEqual(sanitizeCommandLine(''), null, 'Empty line should be null');
   assert.strictEqual(sanitizeCommandLine(null), null, 'Null input should be null');
-  // Binary corrupt line
   assert.strictEqual(sanitizeCommandLine('\x00\x01corrupt\x02\x03'), null, 'Binary characters must be rejected');
-  // Internal sentinel filter
   assert.strictEqual(sanitizeCommandLine('git status; echo "__RF_DONE__0"'), null, '__RF_DONE__ sentinels must be rejected');
-  // Zsh timestamp line
   assert.strictEqual(sanitizeCommandLine(': 1620000000:0;npm run dev'), 'npm run dev', 'Zsh timestamps should be stripped');
   console.log('✓ Command line sanitization verified.');
 
-  // Test 3: loadHistory
   console.log('[Test 3] Testing history loading and reverse-chronological ordering...');
   const history = loadHistory(50);
   assert(Array.isArray(history), 'Loaded history must be an array');
@@ -45,14 +39,12 @@ function runTests() {
   }
   console.log('✓ History loading verified (loaded', history.length, 'recent commands for Up-Arrow).');
 
-  // Test 4: saveSessionHistory with mock file
   console.log('[Test 4] Testing session history append...');
   const tmpDir = path.join(os.tmpdir(), `rf_hist_test_${Date.now()}`);
   fs.mkdirSync(tmpDir, { recursive: true });
   const mockHistFile = path.join(tmpDir, 'history.txt');
   fs.writeFileSync(mockHistFile, 'echo initial\n', 'utf8');
 
-  // Appending session commands
   const sessionCmds = ['setup react my_app', 'explain src/repl.js', 'exit'];
   const toAppend = sessionCmds
     .map((c) => sanitizeCommandLine(c))
@@ -66,11 +58,9 @@ function runTests() {
   assert(updatedContent.includes('explain src/repl.js'), 'Session command 2 must be appended');
   assert(!updatedContent.includes('\nexit\n'), 'Exit command must not be appended');
 
-  // Cleanup
   fs.rmSync(tmpDir, { recursive: true, force: true });
   console.log('✓ Session history append verified.');
 
-  // Test 5: RapidfireRepl history pre-population
   console.log('[Test 5] Testing RapidfireRepl readline history initialization...');
   const repl = new RapidfireRepl();
   repl.start();

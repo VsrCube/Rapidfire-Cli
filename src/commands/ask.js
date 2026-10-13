@@ -11,7 +11,6 @@ function formatMarkdownForTerminal(markdown) {
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
 
-    // Code block toggle
     if (line.trim().startsWith('```')) {
       if (!inCodeBlock) {
         inCodeBlock = true;
@@ -29,7 +28,6 @@ function formatMarkdownForTerminal(markdown) {
       continue;
     }
 
-    // Headings
     if (line.startsWith('# ')) {
       formatted.push(`\n\x1b[1m\x1b[36m${line.slice(2).toUpperCase()}\x1b[0m`);
       continue;
@@ -43,7 +41,6 @@ function formatMarkdownForTerminal(markdown) {
       continue;
     }
 
-    // Bullet points
     if (/^\s*[*+-]\s+/.test(line)) {
       const bulletContent = line.replace(/^\s*[*+-]\s+/, '');
       const styledContent = styleInlineMarkdown(bulletContent);
@@ -51,7 +48,6 @@ function formatMarkdownForTerminal(markdown) {
       continue;
     }
 
-    // Regular lines with inline styles
     formatted.push(styleInlineMarkdown(line));
   }
 
@@ -59,9 +55,7 @@ function formatMarkdownForTerminal(markdown) {
 }
 
 function styleInlineMarkdown(text) {
-  // Bold: **text**
   let result = text.replace(/\*\*(.*?)\*\*/g, '\x1b[1m$1\x1b[0m');
-  // Inline code: `code`
   result = result.replace(/`([^`]+)`/g, '\x1b[33m$1\x1b[0m');
   return result;
 }
@@ -89,7 +83,6 @@ async function handleAsk(args, context = {}) {
   process.stdout.write('\x1b[36m[rapidfire-ai] Thinking...\x1b[0m\r');
   const res = await askGemini(question);
 
-  // Clear "Thinking..." line cleanly
   process.stdout.write(' '.repeat(40) + '\r');
 
   if (!res.success) {
@@ -101,7 +94,6 @@ async function handleAsk(args, context = {}) {
   console.log(formatMarkdownForTerminal(res.text.trim()));
   console.log('\x1b[36m╰────────────────────────────────────────────────────────────────╯\x1b[0m\n');
 
-  // Check if AI suggested installable dependencies
   const deps = extractDependencies(res.text);
   if (deps && deps.packages.length > 0 && context.rl) {
     await promptAndInstallDependencies(deps, context.rl);

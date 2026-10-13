@@ -65,7 +65,6 @@ function resolveShell() {
     };
   }
 
-  // On Linux, detect pwsh vs bash/zsh
   const userShell = process.env.SHELL || '/bin/bash';
   if (userShell.includes('pwsh') || userShell.includes('powershell')) {
     return {
@@ -122,7 +121,6 @@ class PersistentShell {
     }
 
     if (!this.ptyProcess) {
-      // Robust standard spawn fallback for environments without native PTY binaries or PowerShell
       const finalArgs = isPowerShell ? ['-NoLogo', '-NoProfile', '-Command', '-'] : args;
       const cpProc = spawn(shell, finalArgs, {
         cwd: process.cwd(),
@@ -144,7 +142,6 @@ class PersistentShell {
       }
     });
 
-    // Handle terminal resize events
     process.stdout.on('resize', () => {
       this.resize(process.stdout.columns || 80, process.stdout.rows || 24);
     });
@@ -170,7 +167,6 @@ class PersistentShell {
       try {
         this.ptyProcess.resize(cols, rows);
       } catch {
-        // Ignore resize errors if pty is transitioning
       }
     }
   }
@@ -180,7 +176,6 @@ class PersistentShell {
       try {
         this.ptyProcess.kill();
       } catch {
-        // Process might already be exited
       }
       this.ptyProcess = null;
     }

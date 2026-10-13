@@ -15,7 +15,6 @@ async function runTests() {
 
   repl.start();
 
-  // Test 1: Initial prompt was displayed on start
   console.log('[Test 1] Testing initial REPL prompt generation...');
   assert.strictEqual(promptCount, 1, 'Initial prompt should be displayed upon start');
   assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning should be false initially');
@@ -27,7 +26,6 @@ async function runTests() {
     }
   };
 
-  // Test 2: Fast output command automatically restores prompt
   console.log('[Test 2] Testing prompt restoration after command with stdout...');
   await repl.handleLine('echo "RAPIDFIRE_TEST_STREAM"');
   await waitForPrompt(2);
@@ -35,7 +33,6 @@ async function runTests() {
   assert.strictEqual(promptCount, 2, 'Prompt must be called after command finishes');
   assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning must return to false');
 
-  // Test 3: Silent command (like git add or mkdir) restores prompt
   console.log('[Test 3] Testing prompt restoration after silent command (no stdout)...');
   await repl.handleLine('echo -n ""');
   await waitForPrompt(3);
@@ -43,24 +40,20 @@ async function runTests() {
   assert.strictEqual(promptCount, 3, 'Prompt must be called even when command has zero stdout');
   assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning must return to false for silent command');
 
-  // Test 4: Long-running command (> 1.5 seconds) does not timeout prematurely and restores prompt upon completion
   console.log('[Test 4] Testing delayed/network command execution without premature timeout...');
   const isWin = process.platform === 'win32';
   const sleepCmd = isWin ? 'Start-Sleep -Seconds 2' : 'sleep 2';
 
   await repl.handleLine(sleepCmd);
 
-  // At 800ms, command is still executing
   await new Promise((r) => setTimeout(r, 800));
   assert.strictEqual(promptCount, 3, 'Prompt should NOT fire prematurely while command is running');
   assert.strictEqual(repl.isPassthroughRunning, true, 'isPassthroughRunning should stay true during execution');
 
-  // At 2400ms, command has finished and sentinel triggered
   await new Promise((r) => setTimeout(r, 1600));
   assert.strictEqual(promptCount, 4, 'Prompt must fire automatically when long command finishes');
   assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning must be reset to false');
 
-  // Test 5: Command with mid-stream pause (e.g. npm publish upload delay) does NOT fire prompt mid-stream
   console.log('[Test 5] Testing command with mid-stream pause to verify NO mid-stream prompt...');
   const pauseCmd = isWin
     ? 'Write-Host "Phase 1"; Start-Sleep -Milliseconds 700; Write-Host "Phase 2"'
@@ -68,29 +61,24 @@ async function runTests() {
 
   await repl.handleLine(pauseCmd);
 
-  // Check at 400ms (during the 700ms pause)
   await new Promise((r) => setTimeout(r, 400));
   assert.strictEqual(promptCount, 4, 'Prompt must NOT fire during mid-stream pause');
   assert.strictEqual(repl.isPassthroughRunning, true, 'isPassthroughRunning must stay true during pause');
 
-  // Wait for command completion
   await new Promise((r) => setTimeout(r, 900));
   assert.strictEqual(promptCount, 5, 'Prompt must fire exactly once after the command finishes');
   assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning must reset to false');
 
-  // Test 6: Running rapidfire while active does not spawn nested shell and restores prompt immediately
   console.log('[Test 6] Testing rapidfire command while active...');
   await repl.handleLine('rapidfire');
   assert.strictEqual(promptCount, 6, 'Prompt must return immediately after typing rapidfire');
   assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning must be false after rapidfire command');
 
-  // Test 7: Running clear command clears and restores prompt immediately
   console.log('[Test 7] Testing clear command prompt return...');
   await repl.handleLine('clear');
   assert.strictEqual(promptCount, 7, 'Prompt must return immediately after typing clear');
   assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning must be false after clear command');
 
-  // Test 8: Empty line Enter resets passthrough state and calls prompt
   console.log('[Test 8] Testing empty line Enter prompt recovery...');
   repl.isPassthroughRunning = true;
   await repl.handleLine('');

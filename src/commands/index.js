@@ -9,10 +9,6 @@ const { handleKey } = require('./key');
 const { handleExplain } = require('./explain');
 const { handlePush } = require('./push');
 
-/**
- * Parses user input line and checks if it matches a rapidfire internal command.
- * Returns { name, run } if recognized, or null if it should pass through to shell.
- */
 function matchCommand(line) {
   const trimmed = line.trim();
   if (!trimmed) return null;
@@ -20,8 +16,6 @@ function matchCommand(line) {
   const tokens = trimmed.split(/\s+/);
   const cmd = tokens[0].toLowerCase();
 
-  // Unified git push commands:
-  // e.g. "push -m 'init'", "git add . push -branch main -commit 'init'", "add . push -m 'init'"
   const hasPushToken = tokens.some((t) => t.toLowerCase() === 'push');
   if (
     cmd === 'push' ||

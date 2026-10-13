@@ -6,10 +6,6 @@ const { isGhInstalled, isGhAuthenticated, createRepo } = require('../integration
 const { run, commandExists } = require('../utils/proc');
 const { getParentGitRepo } = require('../utils/gitContext');
 
-/**
- * Fallback generator for unknown frameworks when offline or when no AI key is active.
- * Produces clean, functional starter templates for common modern frameworks or a universal starter.
- */
 function getFallbackBlueprint(stack, targetFolder) {
   const s = stack.toLowerCase();
 
@@ -154,7 +150,6 @@ export default function App() {
     };
   }
 
-  // Universal modern starter for any unknown framework/stack
   return {
     summary: `Modern project skeleton for unknown framework '${stack}' in '${targetFolder}'`,
     ecosystem: 'node',
@@ -198,13 +193,9 @@ npm run dev
   };
 }
 
-/**
- * Requests a project blueprint from the configured AI provider, falling back to clean local templates
- */
 async function generateBlueprint(stack, targetFolder) {
   const config = getActiveAiConfig();
 
-  // If no AI key is active, use smart deterministic fallback
   if (!config.apiKey) {
     return getFallbackBlueprint(stack, targetFolder);
   }
@@ -249,9 +240,6 @@ You MUST respond ONLY with valid JSON in this exact schema, without markdown for
   }
 }
 
-/**
- * Prompts user for a yes/no question using the available readline / ask context
- */
 async function promptConfirmation(context, questionText, defaultChoice = 'y') {
   if (process.env.RAPIDFIRE_AUTO_DYNAMIC === '1' && (questionText.includes('dynamically scaffold') || questionText.includes('scaffold this'))) {
     return true;
@@ -276,13 +264,9 @@ async function promptConfirmation(context, questionText, defaultChoice = 'y') {
     });
   }
 
-  // Non-interactive fallback
   return defaultChoice.toLowerCase().startsWith('y');
 }
 
-/**
- * Dynamically scaffolds an unknown framework into targetFolder
- */
 async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context = {}) {
   const stack = plan.stack;
   fse.ensureDirSync(projectPath);
@@ -295,7 +279,6 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
 
   const sanitizedFiles = [];
   for (const file of blueprint.files) {
-    // Prevent path traversal outside target directory
     const cleanName = path.normalize(file.filename).replace(/^(\.\.[\/\\])+/, '');
     const absPath = path.resolve(projectPath, cleanName);
 
@@ -309,13 +292,11 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     sanitizedFiles.push({ cleanName, absPath, content: file.content });
   }
 
-  // Confirmation Gate
   const confirmPrompt = `\n\x1b[1m\x1b[33mDo you want to scaffold this '${stack}' project now? (Y/N):\x1b[0m `;
   const approved = await promptConfirmation(context, confirmPrompt);
 
   if (!approved) {
     console.log(`\x1b[33m[rapidfire-dynamic] Scaffolding aborted by user. No files written.\x1b[0m`);
-    // Clean up empty target directory if we just created it
     try {
       if (fse.existsSync(projectPath) && fse.readdirSync(projectPath).length === 0) {
         fse.removeSync(projectPath);
@@ -330,7 +311,6 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     fse.writeFileSync(f.absPath, f.content, 'utf8');
   }
 
-  // Ensure a sensible default .gitignore exists if blueprint did not provide one
   const hasGitignore = sanitizedFiles.some(f => f.cleanName === '.gitignore');
   if (!hasGitignore) {
     const defaultIgnore = blueprint.ecosystem === 'python'
@@ -339,7 +319,6 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     fse.writeFileSync(path.join(projectPath, '.gitignore'), defaultIgnore, 'utf8');
   }
 
-  // Write .rapidfire.json manifest
   const manifestData = {
     schemaVersion: 2,
     name: targetFolder,
@@ -351,7 +330,6 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
   };
   fse.writeJsonSync(path.join(projectPath, '.rapidfire.json'), manifestData, { spaces: 2 });
 
-  // Initialize Git & Gitleaks pre-push guardrail
   try {
     const parentRepo = getParentGitRepo(projectPath);
     if (parentRepo) {
@@ -384,7 +362,6 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     console.warn('[rapidfire] Git initialization notice:', err.message);
   }
 
-  // Automatic dependency install for Node projects if package.json exists
   if (blueprint.ecosystem === 'node' && fse.existsSync(path.join(projectPath, 'package.json')) && commandExists('npm')) {
     const installPrompt = `\nDo you want to run 'npm install' now? (Y/N): `;
     const shouldInstall = await promptConfirmation(context, installPrompt, 'y');
@@ -398,7 +375,6 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     }
   }
 
-  // Prompt for remote GitHub repo only if local .git repository exists and gh is installed
   if (fse.existsSync(path.join(projectPath, '.git')) && isGhInstalled() && context && (context.ask || context.rl || process.env.RAPIDFIRE_AUTO_GH)) {
     const ghPrompt = `\nDo you want to create a remote GitHub repository for '${targetFolder}'? (Y/N): `;
     const shouldGh = await promptConfirmation(context, ghPrompt, 'n');
@@ -415,7 +391,6 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     }
   }
 
-  // Print success banner
   console.log(`\n\x1b[32m╔════════════════════════════════════════════════════╗\x1b[0m`);
   console.log(`\x1b[32m║  Project '${targetFolder}' (${stack}) ready!  ║\x1b[0m`);
   console.log(`\x1b[32m╚════════════════════════════════════════════════════╝\x1b[0m\n`);

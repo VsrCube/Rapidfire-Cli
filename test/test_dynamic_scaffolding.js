@@ -8,17 +8,14 @@ const { readManifest } = require('../src/utils/manifest');
 async function runTests() {
   console.log('=== TEST SUITE: DYNAMIC & UNKNOWN FRAMEWORK SCAFFOLDING ===\n');
 
-  // --- TEST 1: Stack Planner Classification ---
   console.log('[Test 1] Testing StackPlanner classification across all 3 tiers...');
 
-  // Tier 1: Predefined
   const pReactFastapi = planStack('react+fastapi');
   assert.strictEqual(pReactFastapi.tier, 'PREDEFINED', 'react+fastapi should be PREDEFINED');
 
   const pDjango = planStack('django');
   assert.strictEqual(pDjango.tier, 'PREDEFINED', 'django should be PREDEFINED');
 
-  // Tier 2: Composed (Unlisted combination of known adapters)
   const pSvelteFastapi = planStack('svelte+fastapi');
   assert.strictEqual(pSvelteFastapi.tier, 'COMPOSED', 'svelte+fastapi should be COMPOSED');
   assert.strictEqual(pSvelteFastapi.frontend, 'svelte');
@@ -29,7 +26,6 @@ async function runTests() {
   assert.strictEqual(pVueFlask.frontend, 'vue');
   assert.strictEqual(pVueFlask.backend, 'flask');
 
-  // Tier 3: Unknown framework
   const pAstro = planStack('astro');
   assert.strictEqual(pAstro.tier, 'DYNAMIC', 'astro should be DYNAMIC');
   assert.strictEqual(pAstro.isFullstackPairing, false);
@@ -43,7 +39,6 @@ async function runTests() {
 
   console.log('✔ StackPlanner accurately categorizes Predefined, Composed, and Dynamic stacks.\n');
 
-  // --- TEST 2: Scaffolding a Composed Unlisted Stack (svelte+fastapi) ---
   console.log('[Test 2] Testing live scaffolding of composed stack (svelte+fastapi)...');
   const tempDir = path.join('/tmp', `rapidfire_test_dynamic_${Date.now()}`);
   fse.ensureDirSync(tempDir);
@@ -55,7 +50,7 @@ async function runTests() {
     await handleSetup(['svelte+fastapi', composedFolder], {
       ask: async (q) => {
         if (q.includes('Git repository')) return 'y';
-        return 'n'; // skip venv & remote gh
+        return 'n';
       }
     });
 
@@ -66,18 +61,15 @@ async function runTests() {
     assert.ok(fse.existsSync(path.join(projectDir, 'backend')), 'backend folder should exist');
     assert.ok(fse.existsSync(path.join(projectDir, 'backend', 'main.py')), 'backend/main.py should exist');
 
-    // Verify CORS configured in FastAPI backend
     const mainPy = fse.readFileSync(path.join(projectDir, 'backend', 'main.py'), 'utf8');
     assert.ok(mainPy.includes('CORSMiddleware'), 'FastAPI backend should have CORS configured');
 
-    // Verify .rapidfire.json manifest
     const manifest = readManifest(projectDir);
     assert.ok(manifest, 'Manifest should exist');
     assert.strictEqual(manifest.frontend, 'svelte');
     assert.strictEqual(manifest.backend, 'fastapi');
     assert.strictEqual(manifest.generationMode, 'composed', 'Manifest generationMode should be composed');
 
-    // Verify Git init and Gitleaks pre-push hook
     assert.ok(fse.existsSync(path.join(projectDir, '.git')), 'Git repository should be initialized');
     assert.ok(fse.existsSync(path.join(projectDir, '.git', 'hooks', 'pre-push')), 'Gitleaks pre-push hook should be installed');
 
@@ -87,7 +79,6 @@ async function runTests() {
     fse.removeSync(tempDir);
   }
 
-  // --- TEST 3: User Rejection on Dynamic Scaffolding ---
   console.log('[Test 3] Testing user rejection (N) on unknown framework scaffolding...');
   const tempDirReject = path.join('/tmp', `rapidfire_test_reject_${Date.now()}`);
   fse.ensureDirSync(tempDirReject);
@@ -97,7 +88,6 @@ async function runTests() {
     const unknownFolder = 'my_rejected_app';
     await handleSetup(['unknownframework', unknownFolder], {
       ask: async (q) => {
-        // User answers N to dynamic scaffold prompt
         return 'n';
       }
     });
@@ -110,7 +100,6 @@ async function runTests() {
     fse.removeSync(tempDirReject);
   }
 
-  // --- TEST 4: Dynamic Scaffolding for Unknown Framework (Astro) ---
   console.log('[Test 4] Testing dynamic scaffolding for unknown framework (astro)...');
   const tempDirDynamic = path.join('/tmp', `rapidfire_test_astro_${Date.now()}`);
   fse.ensureDirSync(tempDirDynamic);
@@ -120,7 +109,6 @@ async function runTests() {
     const astroFolder = 'my_astro_app';
     await handleSetup(['astro', astroFolder], {
       ask: async (q) => {
-        // Confirm dynamic scaffolding (Y) and local git (Y), but skip npm install and remote gh
         if (q.includes('dynamically scaffold') || q.includes('scaffold this') || q.includes('Git repository')) return 'y';
         return 'n';
       }
@@ -132,14 +120,12 @@ async function runTests() {
     assert.ok(fse.existsSync(path.join(projectDir, 'astro.config.mjs')), 'astro.config.mjs should exist');
     assert.ok(fse.existsSync(path.join(projectDir, 'src', 'pages', 'index.astro')), 'index.astro should exist');
 
-    // Verify .rapidfire.json manifest
     const manifest = readManifest(projectDir);
     assert.ok(manifest, 'Manifest should exist');
     assert.strictEqual(manifest.recipe, 'astro');
     assert.strictEqual(manifest.generationMode, 'dynamic');
     assert.strictEqual(manifest.ecosystem, 'node');
 
-    // Verify Git init and Gitleaks pre-push hook
     assert.ok(fse.existsSync(path.join(projectDir, '.git')), 'Git repository should be initialized');
     assert.ok(fse.existsSync(path.join(projectDir, '.git', 'hooks', 'pre-push')), 'Gitleaks pre-push hook should be installed');
 
@@ -149,7 +135,6 @@ async function runTests() {
     fse.removeSync(tempDirDynamic);
   }
 
-  // --- TEST 5: Non-interactive --dynamic flag ---
   console.log('[Test 5] Testing non-interactive --dynamic flag for unknown framework (solid)...');
   const tempDirFlag = path.join('/tmp', `rapidfire_test_flag_${Date.now()}`);
   fse.ensureDirSync(tempDirFlag);
@@ -159,7 +144,7 @@ async function runTests() {
     const solidFolder = 'my_solid_app';
     process.env.RAPIDFIRE_AUTO_DYNAMIC = '1';
     await handleSetup(['solid', solidFolder, '--dynamic'], {
-      ask: async () => 'n' // skip npm install / gh
+      ask: async () => 'n'
     });
 
     const projectDir = path.join(tempDirFlag, solidFolder);

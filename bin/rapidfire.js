@@ -2,9 +2,7 @@
 
 const { startRepl } = require('../src/repl');
 
-// Handle termination signals gracefully
 process.on('SIGINT', () => {
-  // If user hits Ctrl+C at prompt, let readline or shell handle it
 });
 
 process.on('SIGTERM', () => {

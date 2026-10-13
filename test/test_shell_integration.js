@@ -10,7 +10,6 @@ shell.onData((data) => {
   receivedOutput += data;
 });
 
-// Send test command
 shell.write('echo "TEST_RAPIDFIRE_OK"');
 
 setTimeout(() => {

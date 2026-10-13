@@ -3,7 +3,6 @@ const { extractDependencies, validatePackageSecurity } = require('../src/utils/d
 
 console.log('--- TEST: DEPENDENCY EXTRACTOR & SECURITY VALIDATOR ---');
 
-// 1. Test extraction from AI output (mimicking the user's screenshot)
 const sampleAiOutput = `
 For a typical AI/ML project focusing on data analysis and machine learning:
 \`\`\`bash
@@ -28,16 +27,13 @@ assert(extracted.packages.includes('Pillow'), 'Must include Pillow');
 assert(extracted.packages.includes('opencv-python'), 'Must include opencv-python');
 console.log('✓ Dependency extraction verified.');
 
-// 2. Test Security Validation
 async function runSecurityTests() {
-  // Safe packages
   const safe1 = await validatePackageSecurity('numpy', 'python');
   assert(safe1.valid, 'numpy must be valid');
 
   const safe2 = await validatePackageSecurity('scikit-learn', 'python');
   assert(safe2.valid, 'scikit-learn must be valid');
 
-  // Injections and dangerous flags
   const dangerous1 = await validatePackageSecurity('numpy; rm -rf /', 'python');
   assert(!dangerous1.valid, 'Command injection must be rejected');
 

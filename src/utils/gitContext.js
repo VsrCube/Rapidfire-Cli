@@ -2,9 +2,6 @@ const path = require('path');
 const fse = require('fs-extra');
 const { runCapture } = require('./proc');
 
-/**
- * Checks whether the given directory is inside an active Git worktree.
- */
 function isInsideGitRepo(dir) {
   try {
     const target = fse.existsSync(dir) ? dir : path.dirname(dir);
@@ -15,10 +12,6 @@ function isInsideGitRepo(dir) {
   }
 }
 
-/**
- * Detects if the targetPath is nested inside an existing parent Git repository.
- * Returns the parent repo top-level path if nested, or null if targetPath is standalone or outside Git.
- */
 function getParentGitRepo(targetPath) {
   try {
     const absTarget = path.resolve(targetPath);
@@ -33,9 +26,6 @@ function getParentGitRepo(targetPath) {
   return null;
 }
 
-/**
- * Asks a user for Y/N confirmation via available context (interactive repl, readline, or env flag).
- */
 async function promptConfirmation(context, question, defaultChoice = 'n') {
   if (process.env.RAPIDFIRE_AUTO_GIT === '1') return true;
   if (process.env.RAPIDFIRE_AUTO_GIT === '0') return false;
@@ -49,7 +39,6 @@ async function promptConfirmation(context, question, defaultChoice = 'n') {
       context.rl.question(question, (ans) => resolve(ans));
     });
   } else {
-    // Non-interactive / headless environment default
     return defaultChoice.toLowerCase().startsWith('y');
   }
 

@@ -10,8 +10,6 @@ const { planStack } = require('../scaffolding/planner');
 const { scaffoldDynamicFramework } = require('../scaffolding/dynamicEngine');
 const { getParentGitRepo, promptConfirmation } = require('../utils/gitContext');
 
-// --- FRONTEND TEMPLATES ---
-
 function scaffoldViteReact(frontendDir) {
   fse.ensureDirSync(frontendDir);
   console.log(`[rapidfire] Scaffolding React (Vite) frontend in ${frontendDir}...`);
@@ -180,8 +178,6 @@ export default app;
 `, 'utf8');
 }
 
-// --- HELPER WRITERS ---
-
 function writeFastAPIBackend(backendDir, appName) {
   fse.ensureDirSync(backendDir);
   console.log('[rapidfire] Scaffolding FastAPI backend...');
@@ -279,7 +275,6 @@ if __name__ == '__main__':
 
 async function initGitAndHooks(projectPath, targetFolder, context = {}) {
   try {
-    // 1. Check if target directory is nested inside an existing parent Git repository
     const parentRepo = getParentGitRepo(projectPath);
     if (parentRepo) {
       console.log(`\x1b[33m[rapidfire] Detected parent Git repository at '${parentRepo}'. Skipping nested git init.\x1b[0m`);
@@ -289,7 +284,6 @@ async function initGitAndHooks(projectPath, targetFolder, context = {}) {
       return { initialized: false, isNested: true, parentRepo };
     }
 
-    // 2. If it already has a local .git directory, just ensure security hooks are installed
     if (fse.existsSync(path.join(projectPath, '.git'))) {
       const hookResult = installPrePushHook(projectPath);
       if (hookResult.success) {
@@ -298,11 +292,9 @@ async function initGitAndHooks(projectPath, targetFolder, context = {}) {
       return { initialized: true, isNested: false };
     }
 
-    // 3. Standalone project outside Git: ask user if they want to initialize a local Git repository
     const folderName = targetFolder || path.basename(projectPath);
     const gitPrompt = `\nDo you want to initialize a local Git repository for '${folderName}'? (Y/N): `;
 
-    // Interactive users default to 'n' unless confirmed; non-interactive headless default can use RAPIDFIRE_AUTO_GIT
     const isInteractive = Boolean(context && (typeof context.ask === 'function' || context.rl));
     const defaultChoice = isInteractive ? 'n' : (process.env.RAPIDFIRE_AUTO_GIT === '0' ? 'n' : 'y');
     const shouldInit = await promptConfirmation(context, gitPrompt, defaultChoice);
@@ -364,7 +356,6 @@ async function maybePromptForVenv(pythonDir, context) {
 
 async function maybePromptForGithubRepo(projectPath, targetFolder, context) {
   if (!projectPath || !fse.existsSync(projectPath)) return;
-  // If no local Git repository exists, skip remote GitHub repository creation
   if (!fse.existsSync(path.join(projectPath, '.git'))) return;
   if (!isGhInstalled()) return;
 
@@ -400,8 +391,6 @@ async function maybePromptForGithubRepo(projectPath, targetFolder, context) {
   }
 }
 
-// --- RECIPES ---
-
 async function handleSetup(args, context = {}) {
   const stack = args[0]?.toLowerCase();
   const targetFolder = args[1];
@@ -433,7 +422,6 @@ async function handleSetup(args, context = {}) {
 
   const plan = planStack(stack);
 
-  // Pre-flight check for required tools on known stacks (Node.js, npm, Python, Django)
   if (plan.tier === 'PREDEFINED' || plan.tier === 'COMPOSED') {
     const requiresNode = stack.includes('react') || stack.includes('vue') || stack.includes('svelte') || stack.includes('node');
     const requiresPython = stack.includes('fastapi') || stack.includes('django') || stack.includes('flask');
@@ -454,14 +442,12 @@ async function handleSetup(args, context = {}) {
     return;
   }
 
-  // Tier 2: Dynamic Composed Pairings (e.g. svelte+fastapi, vue+flask)
   if (plan.tier === 'COMPOSED') {
     console.log(`[rapidfire] Composing multi-framework stack: ${plan.frontend} (frontend) + ${plan.backend} (backend)...`);
     await setupFullstack(projectPath, targetFolder, plan.frontend, plan.backend, context);
     return;
   }
 
-  // Tier 3: Unknown Frameworks or Custom Stacks (e.g. astro, solid, nextjs, nestjs)
   if (plan.tier === 'DYNAMIC') {
     const hasDynamicFlag = args.some(
       (a) => a.toLowerCase() === '--dynamic' || a.toLowerCase() === '--resolve' || a.toLowerCase() === 'dynamic'
@@ -555,23 +541,19 @@ async function setupFullstack(projectPath, targetFolder, frontend, backend, cont
 
   fse.ensureDirSync(projectPath);
 
-  // 1. Frontend
   const frontendDir = path.join(projectPath, 'frontend');
   if (frontend === 'react') scaffoldViteReact(frontendDir);
   else if (frontend === 'vue') scaffoldViteVue(frontendDir);
   else if (frontend === 'svelte') scaffoldViteSvelte(frontendDir);
 
-  // 2. Backend
   const backendDir = path.join(projectPath, 'backend');
   if (backend === 'fastapi') writeFastAPIBackend(backendDir, targetFolder);
   else if (backend === 'node') writeExpressBackend(backendDir, targetFolder);
   else if (backend === 'django') writeDjangoBackend(backendDir);
   else if (backend === 'flask') writeFlaskBackend(backendDir);
 
-  // Gitignore
   fse.writeFileSync(path.join(projectPath, '.gitignore'), `node_modules/\ndist/\n.env\n__pycache__/\n*.pyc\nvenv/\n.venv/\n`, 'utf8');
 
-  // Readme
   fse.writeFileSync(path.join(projectPath, 'README.md'), `# ${targetFolder}
 Scaffolded with RapidFire CLI (\`setup ${frontend}+${backend}\`).
 

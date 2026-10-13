@@ -1,7 +1,3 @@
-/**
- * In-terminal real-time syntax highlighter and tab completer for RapidFire REPL.
- * Mimics modern terminal styling (PowerShell PSReadLine and Fish shell).
- */
 
 const RAPIDFIRE_COMMANDS = [
   'rapidfire',
@@ -116,13 +112,6 @@ const RECIPES = [
   'django'
 ];
 
-/**
- * Highlights a command line string in real-time matching PowerShell styling:
- * - Primary commands (rapidfire, init, git, cd, setup, explain, etc.): Bright Yellow (\x1b[93m)
- * - Subcommands (add, commit, status, react, etc.): Cyan (\x1b[36m)
- * - Flags (-m, -v, --prod): Slate Gray (\x1b[90m)
- * - Strings ("...", '...', or unclosed "typing...): Cyan (\x1b[36m)
- */
 function highlightSyntax(line) {
   if (!line) return '';
 
@@ -135,13 +124,11 @@ function highlightSyntax(line) {
   let coloredFirst = firstWord;
   const allCommands = [...RAPIDFIRE_COMMANDS, ...SHELL_COMMANDS];
   if (allCommands.includes(lowerFirst)) {
-    // Bright Yellow (PowerShell CommandColor)
     coloredFirst = `\x1b[93m${firstWord}\x1b[0m`;
   }
 
   let coloredRest = rest;
 
-  // Highlight subcommands like "git add", "git commit", "setup react", "init git" in Cyan (\x1b[36m)
   const subMatch = coloredRest.match(/^(\s+)([^\s]+)([\s\S]*)$/);
   if (subMatch) {
     const [__, sp, subWord, afterSub] = subMatch;
@@ -151,11 +138,8 @@ function highlightSyntax(line) {
     }
   }
 
-  // Highlight CLI flags (-m, -v, --flag) in slate gray (\x1b[90m)
   coloredRest = coloredRest.replace(/(\s)(--?[a-zA-Z0-9_\-]+)/g, '$1\x1b[90m$2\x1b[0m');
 
-  // Highlight string literals in Cyan (matching PowerShell PSReadLine StringColor)
-  // Handles both closed strings ("...") and in-progress unclosed strings ("typing...)
   coloredRest = coloredRest.replace(/(["'])(?:.*?\1|[^"']*$)/g, (str) => {
     return `\x1b[36m${str}\x1b[0m`;
   });
@@ -163,9 +147,6 @@ function highlightSyntax(line) {
   return leading + coloredFirst + coloredRest;
 }
 
-/**
- * Creates a tab autocompleter function compatible with readline.createInterface
- */
 function createCompleter() {
   return function completer(line) {
     const trimmed = line.trimStart();

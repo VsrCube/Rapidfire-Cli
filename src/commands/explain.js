@@ -2,10 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const { explainFile, explainDirectory } = require('../ai/gemini');
 
-/**
- * Handles the 'explain [path]' command in RapidFire REPL
- * Explains a single source file or directory architecture.
- */
 async function handleExplain(args) {
   const cyan = '\x1b[36m';
   const green = '\x1b[32m';
@@ -44,7 +40,6 @@ async function handleExplain(args) {
     return result;
   }
 
-  // Print explanation
   console.log(result.text);
 
   if (result.isFallback) {

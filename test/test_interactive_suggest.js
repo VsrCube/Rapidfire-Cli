@@ -14,13 +14,12 @@ process.chdir(tmpDir);
 
 async function runTest() {
   try {
-    // 1. Test answering 'N' (rejection / manual pick)
     console.log('[Test 1] User answers N to implementation prompt...');
     let questionCount = 0;
     const mockRlReject = {
       question: (query, callback) => {
         questionCount++;
-        callback('N'); // Reject implementation
+        callback('N');
       }
     };
 
@@ -28,16 +27,15 @@ async function runTest() {
     assert.strictEqual(questionCount, 1, 'Should ask Y/N question once');
     console.log('✓ Rejection handled cleanly without creating folders.');
 
-    // 2. Test answering 'Y' (acceptance -> folder input -> scaffold)
     console.log('[Test 2] User answers Y followed by folder name...');
     const questionsAsked = [];
     const mockRlAccept = {
       question: (query, callback) => {
         questionsAsked.push(query);
         if (questionsAsked.length === 1) {
-          callback('Y'); // Accept
+          callback('Y');
         } else if (questionsAsked.length === 2) {
-          callback('my_interactive_app'); // Folder name
+          callback('my_interactive_app');
         }
       }
     };

@@ -7,9 +7,6 @@ try {
   CURRENT_VERSION = require('../../package.json').version;
 } catch {}
 
-/**
- * Creates and writes a .rapidfire.json manifest in the project root
- */
 function writeManifest(projectDir, { frontend, backend, folderName, generationMode }) {
   const manifestPath = path.join(projectDir, MANIFEST_FILENAME);
   const data = {
@@ -25,9 +22,6 @@ function writeManifest(projectDir, { frontend, backend, folderName, generationMo
   return data;
 }
 
-/**
- * Reads .rapidfire.json manifest from a directory
- */
 function readManifest(projectDir) {
   const manifestPath = path.join(projectDir, MANIFEST_FILENAME);
   if (!fse.existsSync(manifestPath)) {
@@ -41,9 +35,6 @@ function readManifest(projectDir) {
   }
 }
 
-/**
- * Checks whether a directory contains a .rapidfire.json manifest
- */
 function hasManifest(projectDir) {
   return fse.existsSync(path.join(projectDir, MANIFEST_FILENAME));
 }

@@ -4,9 +4,6 @@ function isVercelInstalled() {
   return commandExists('vercel');
 }
 
-/**
- * Deploys the frontend folder using the Vercel CLI
- */
 function deployFrontend(frontendPath) {
   if (!isVercelInstalled()) {
     return {
