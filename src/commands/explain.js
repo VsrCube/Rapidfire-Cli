@@ -49,7 +49,7 @@ async function handleExplain(args) {
 
   if (result.isFallback) {
     console.log(`\n${dim}[rapidfire-ai] Generated via deterministic static inspection.${reset}`);
-    console.log(`${dim}Tip: Save your AI API key ("key <token>") for deep AI architectural reasoning.${reset}\n`);
+    console.log(`${dim}Save your AI API key ("key <token>") for deep AI architectural reasoning.${reset}\n`);
   } else {
     console.log(`\n${dim}[rapidfire-ai] Analyzed via ${result.model || 'AI'}.${reset}\n`);
   }
