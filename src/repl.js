@@ -61,12 +61,22 @@ class RapidfireRepl {
       };
     }
 
+    if (typeof this.rl.cursor !== 'number' || isNaN(this.rl.cursor)) {
+      this.rl.cursor = 0;
+    }
+
     const symInsert = Object.getOwnPropertySymbols(Object.getPrototypeOf(this.rl)).find((s) =>
       s.toString().includes('_insertString')
     );
     if (symInsert && typeof this.rl[symInsert] === 'function') {
       Object.defineProperty(this.rl, symInsert, {
         value: function (c) {
+          if (typeof this.cursor !== 'number' || isNaN(this.cursor)) {
+            this.cursor = 0;
+          }
+          if (typeof this.line !== 'string') {
+            this.line = '';
+          }
           if (this.cursor < this.line.length) {
             const beg = this.line.slice(0, this.cursor);
             const end = this.line.slice(this.cursor);
@@ -75,7 +85,9 @@ class RapidfireRepl {
             this.line += c;
           }
           this.cursor += c.length;
-          this._refreshLine();
+          if (typeof this._refreshLine === 'function') {
+            this._refreshLine();
+          }
         },
         configurable: true,
         writable: true

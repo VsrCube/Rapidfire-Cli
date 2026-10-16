@@ -60,17 +60,15 @@ function commandExists(cmd) {
       const directLocal = path.join(os.homedir(), '.local', 'bin', 'django-admin');
       if (fs.existsSync(directLocal)) return true;
 
-      try {
-        execSync('python3 -m django --version', { stdio: ['ignore', 'pipe', 'ignore'] });
-        return true;
-      } catch {
+      const pyExe = getPythonExecutable();
+      const pythonCandidates = [pyExe, 'python3', 'python', 'py'].filter(Boolean);
+      for (const py of pythonCandidates) {
         try {
-          execSync('python -m django --version', { stdio: ['ignore', 'pipe', 'ignore'] });
+          execSync(`${py} -m django --version`, { stdio: ['ignore', 'pipe', 'ignore'] });
           return true;
-        } catch {
-          return false;
-        }
+        } catch { }
       }
+      return false;
     }
     return false;
   }
@@ -98,15 +96,12 @@ function runCapture(command, options = {}) {
 function getDjangoAdminCmd() {
   ensurePath();
   const directLocal = path.join(os.homedir(), '.local', 'bin', 'django-admin');
-  if (commandExists('django-admin')) {
-    try {
-      execSync('django-admin --version', { stdio: 'ignore' });
-      return 'django-admin';
-    } catch {
-      if (fs.existsSync(directLocal)) return directLocal;
-    }
+  try {
+    execSync('django-admin --version', { stdio: 'ignore' });
+    return 'django-admin';
+  } catch {
+    if (fs.existsSync(directLocal)) return directLocal;
   }
-  if (fs.existsSync(directLocal)) return directLocal;
   const py = getPythonExecutable();
   return `${py} -m django`;
 }
