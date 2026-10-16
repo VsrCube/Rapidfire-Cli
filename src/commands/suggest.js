@@ -18,11 +18,8 @@ async function handleSuggest(args, context = {}) {
     return;
   }
 
-  const keyReady = await ensureOrPromptApiKey(context);
-  if (!keyReady) {
-    console.log('Available recipes for manual selection:');
-    SUPPORTED_STACKS.forEach(s => console.log(`  - ${s}`));
-    return;
+  if (!hasApiKey() && !context.rl && typeof context.ask !== 'function') {
+    await ensureOrPromptApiKey(context);
   }
 
   console.log(`\x1b[36m[rapidfire-ai] Analyzing requirements for: "${query}"...\x1b[0m`);

@@ -15,6 +15,9 @@ function ensurePath() {
   ];
 
   if (isWindows) {
+    const sysRoot = process.env.SystemRoot || process.env.SYSTEMROOT || 'C:\\Windows';
+    candidateDirs.push(path.join(sysRoot, 'System32'));
+    candidateDirs.push(sysRoot);
     if (process.env.LOCALAPPDATA) {
       candidateDirs.push(path.join(process.env.LOCALAPPDATA, 'Programs', 'Python'));
       candidateDirs.push(path.join(process.env.LOCALAPPDATA, 'Programs', 'Python', 'Python312', 'Scripts'));
