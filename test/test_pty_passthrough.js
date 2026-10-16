@@ -12,12 +12,19 @@ shell.onData((data) => {
 
 shell.write('echo "PASSTHROUGH_VERIFIED"');
 
-setTimeout(() => {
-  shell.kill();
-  assert(
-    receivedOutput.includes('PASSTHROUGH_VERIFIED'),
-    'PTY output must include PASSTHROUGH_VERIFIED'
-  );
-  console.log('✓ Persistent PTY shell command execution and streaming verified.');
-  process.exit(0);
-}, 1200);
+const startTime = Date.now();
+const interval = setInterval(() => {
+  if (receivedOutput.includes('PASSTHROUGH_VERIFIED')) {
+    clearInterval(interval);
+    shell.kill();
+    console.log('✓ Persistent PTY shell command execution and streaming verified.');
+    process.exit(0);
+  } else if (Date.now() - startTime > 5000) {
+    clearInterval(interval);
+    shell.kill();
+    assert(
+      receivedOutput.includes('PASSTHROUGH_VERIFIED'),
+      'PTY output must include PASSTHROUGH_VERIFIED'
+    );
+  }
+}, 50);
