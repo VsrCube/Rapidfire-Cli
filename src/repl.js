@@ -33,7 +33,9 @@ class RapidfireRepl {
   }
 
   start() {
-    process.stdout.write('\x1b[?9001l\x1b[?1004l\x1b]133;D;0\x07');
+    if (process.stdout.isTTY) {
+      process.stdout.write('\x1b[?9001l\x1b[?1004l\x1b]133;D;0\x07');
+    }
     this.printBanner();
 
     this.rl = readline.createInterface({
@@ -215,9 +217,15 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
   }
 
   handleCdSync(line) {
-    const parts = line.split(/\s+/);
-    if (parts[0] === 'cd') {
-      const target = parts[1];
+    const trimmed = line.trim();
+    if (trimmed === 'cd' || /^cd[\s'"]/.test(trimmed)) {
+      let target = trimmed.slice(2).trim();
+      if (
+        (target.startsWith('"') && target.endsWith('"')) ||
+        (target.startsWith("'") && target.endsWith("'"))
+      ) {
+        target = target.slice(1, -1);
+      }
       let targetPath;
       if (!target || target === '~') {
         targetPath = os.homedir();
@@ -230,7 +238,9 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
       if (fs.existsSync(targetPath) && fs.statSync(targetPath).isDirectory()) {
         try {
           process.chdir(targetPath);
-          this.rl.setPrompt(this.getPrompt());
+          if (this.rl) {
+            this.rl.setPrompt(this.getPrompt());
+          }
         } catch {
         }
       }
@@ -246,7 +256,9 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
     if (this.shell) {
       this.shell.kill();
     }
-    process.stdout.write('\x1b[?9001l\x1b[?1004l');
+    if (process.stdout.isTTY) {
+      process.stdout.write('\x1b[?9001l\x1b[?1004l');
+    }
     process.exit(0);
   }
 }

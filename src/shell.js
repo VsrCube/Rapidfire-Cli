@@ -43,6 +43,14 @@ class ChildProcessPtyAdapter {
 
 function resolveShell() {
   if (process.env.RAPIDFIRE_SHELL) {
+    const rawShell = process.env.RAPIDFIRE_SHELL.trim().toLowerCase();
+    const baseShell = path.basename(rawShell);
+    if (baseShell === 'cmd.exe' || baseShell === 'cmd') {
+      throw new Error(
+        "[rapidfire] 'cmd.exe' is not supported as a persistent REPL shell. " +
+        "Please use PowerShell ('powershell.exe' or 'pwsh.exe') or Bash."
+      );
+    }
     return {
       shell: process.env.RAPIDFIRE_SHELL,
       args: []

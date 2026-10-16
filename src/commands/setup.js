@@ -47,11 +47,13 @@ export default defineConfig({ plugins: [react()], server: { port: 3000 } });
 <html lang="en"><head><meta charset="UTF-8" /><title>Rapidfire React</title></head>
 <body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>
 `, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env.example'), 'VITE_API_URL=http://localhost:8000\n', 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
   fse.writeFileSync(path.join(srcDir, 'index.css'), `* { box-sizing: border-box; margin: 0; padding: 0; }
 body { margin: 0; background: #0b0f19; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; display: flex; min-height: 100vh; align-items: center; justify-content: center; }`, 'utf8');
   fse.writeFileSync(path.join(srcDir, 'App.jsx'), `import React, { useState } from 'react';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function App() {
   const [count, setCount] = useState(0);
@@ -61,11 +63,9 @@ export default function App() {
   const testBackendApi = async () => {
     setLoading(true);
     try {
-      // Test FastAPI (8000) or Express (5000)
-      const port = 8000;
       let res;
       try {
-        res = await fetch('http://localhost:8000/api/health');
+        res = await fetch(API_URL + '/api/health');
       } catch {
         res = await fetch('http://localhost:5000/api/health');
       }
@@ -331,7 +331,7 @@ async function initGitAndHooks(projectPath, targetFolder, context = {}) {
       console.log(`\x1b[33m[rapidfire] Detected parent Git repository at '${parentRepo}'. Skipping nested git init.\x1b[0m`);
       try {
         installPrePushHook(parentRepo);
-      } catch {}
+      } catch { }
       return { initialized: false, isNested: true, parentRepo };
     }
 

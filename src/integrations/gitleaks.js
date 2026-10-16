@@ -25,9 +25,13 @@ function installPrePushHook(projectPath) {
 echo "[rapidfire] Scanning outgoing changes for leaked secrets with gitleaks..."
 
 if ! command -v gitleaks >/dev/null 2>&1; then
-  echo "[rapidfire-warning] gitleaks binary is not installed on PATH. Skipping leak check."
-  echo "To enable secret protection, install gitleaks (e.g. pacman -S gitleaks or brew install gitleaks)."
-  exit 0
+  echo ""
+  echo "❌ [rapidfire-security] Push blocked: 'gitleaks' binary is not installed on PATH."
+  echo "RapidFire enforces fail-closed secret protection. To proceed, please install gitleaks:"
+  echo "  • Windows: winget install Gitleaks.Gitleaks (or choco install gitleaks)"
+  echo "  • macOS:   brew install gitleaks"
+  echo "  • Linux:   pacman -S gitleaks or download from https://github.com/gitleaks/gitleaks/releases"
+  exit 1
 fi
 
 # Protect against secret leaks in staged/outgoing commits

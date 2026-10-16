@@ -17,10 +17,16 @@ function ensurePath() {
   if (isWindows) {
     if (process.env.LOCALAPPDATA) {
       candidateDirs.push(path.join(process.env.LOCALAPPDATA, 'Programs', 'Python'));
+      candidateDirs.push(path.join(process.env.LOCALAPPDATA, 'Programs', 'Python', 'Python312', 'Scripts'));
+      candidateDirs.push(path.join(process.env.LOCALAPPDATA, 'Programs', 'Python', 'Python311', 'Scripts'));
+      candidateDirs.push(path.join(process.env.LOCALAPPDATA, 'Programs', 'Python', 'Python310', 'Scripts'));
       candidateDirs.push(path.join(process.env.LOCALAPPDATA, 'bin'));
     }
     if (process.env.APPDATA) {
       candidateDirs.push(path.join(process.env.APPDATA, 'npm'));
+      candidateDirs.push(path.join(process.env.APPDATA, 'Python', 'Python312', 'Scripts'));
+      candidateDirs.push(path.join(process.env.APPDATA, 'Python', 'Python311', 'Scripts'));
+      candidateDirs.push(path.join(process.env.APPDATA, 'Python', 'Python310', 'Scripts'));
     }
   }
 
@@ -112,15 +118,22 @@ function getPythonExecutable() {
     try {
       execSync(`${cmd} --version`, { stdio: 'ignore' });
       return cmd;
-    } catch {}
+    } catch { }
   }
   return process.platform === 'win32' ? 'python' : 'python3';
 }
 
+function getVenvPython(venvPath) {
+  const isWindows = process.platform === 'win32';
+  return isWindows
+    ? path.join(venvPath, 'Scripts', 'python.exe')
+    : path.join(venvPath, 'bin', 'python');
+}
 function createVirtualEnvironment(targetDir) {
   const pythonCmd = getPythonExecutable();
   const venvPath = path.join(targetDir, 'venv');
   const isWindows = process.platform === 'win32';
+  const pythonPath = getVenvPython(venvPath);
 
   try {
     execSync(`${pythonCmd} -m venv "${venvPath}"`, { stdio: 'inherit' });
@@ -128,6 +141,7 @@ function createVirtualEnvironment(targetDir) {
     return {
       success: true,
       venvPath,
+      pythonPath,
       activateCmd
     };
   } catch (err) {
@@ -148,7 +162,7 @@ function hasPython() {
     try {
       execSync(`${cmd} --version`, { stdio: 'ignore' });
       return true;
-    } catch {}
+    } catch { }
   }
   return false;
 }
@@ -224,6 +238,7 @@ module.exports = {
   runCapture,
   getDjangoAdminCmd,
   getPythonExecutable,
+  getVenvPython,
   createVirtualEnvironment,
   hasPython,
   hasNode,

@@ -16,7 +16,14 @@ async function handleDeploy(args = []) {
     targetDir = path.resolve(process.cwd(), args[0]);
   }
 
-  const frontendSub = path.join(targetDir, 'frontend');
+  const rootDir = targetDir;
+  let hasBackend = false;
+  const backendSub = path.join(rootDir, 'backend');
+  if (fs.existsSync(backendSub)) {
+    hasBackend = true;
+  }
+
+  const frontendSub = path.join(rootDir, 'frontend');
   if (fs.existsSync(path.join(frontendSub, 'package.json'))) {
     targetDir = frontendSub;
   }
@@ -54,6 +61,12 @@ async function handleDeploy(args = []) {
       console.log(`${bold}${green}║  Live URL: Check your Vercel Dashboard for live domain         ║${reset}`);
     }
     console.log(`${bold}${green}╚════════════════════════════════════════════════════════════════╝${reset}\n`);
+
+    if (hasBackend) {
+      console.log(`${yellow}ℹ [rapidfire-deploy] Notice: Backend directory detected at '${backendSub}'.${reset}`);
+      console.log(`${yellow}  Rapidfire deploy deployed only the frontend to Vercel.${reset}`);
+      console.log(`${yellow}  Your backend was NOT deployed. Deploy it separately to Render, Railway, or serverless.${reset}\n`);
+    }
 
   } catch (err) {
     const combinedMsg = (err.stdout || '') + (err.stderr || '') + (err.message || '');
