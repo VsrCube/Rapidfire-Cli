@@ -244,7 +244,7 @@ async function queryGemini({ apiKey, modelName, prompt, systemInstruction, histo
       return response.text();
     } catch {
       const fallbackModel = genAI.getGenerativeModel({
-        model: 'gemini-3.5-flash-lite',
+        model: 'gemini-1.5-flash',
         systemInstruction
       });
       const chat = fallbackModel.startChat({ history: historyToUse });
@@ -264,7 +264,7 @@ async function queryGemini({ apiKey, modelName, prompt, systemInstruction, histo
     return response.text();
   } catch {
     const fallbackModel = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash-lite',
+      model: 'gemini-1.5-flash',
       systemInstruction
     });
     const result = await fallbackModel.generateContent(prompt);

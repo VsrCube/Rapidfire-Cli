@@ -1,6 +1,11 @@
 const path = require('path');
 const fs = require('fs');
-const { execSync } = require('child_process');
+const {
+  isVercelInstalled,
+  deployFrontend,
+  getVercelUser,
+  getVercelExecutable
+} = require('../integrations/vercel');
 
 async function handleDeploy(args = []) {
   const bold = '\x1b[1m';
@@ -39,24 +44,27 @@ async function handleDeploy(args = []) {
     console.log(`Make sure you are deploying a frontend project folder (e.g. setup react+node).`);
   }
 
+  if (!isVercelInstalled()) {
+    console.error(`\n${red}[rapidfire-deploy] Vercel CLI or npx not found.${reset}`);
+    console.log(`Please install Node.js/npm or run: npm install -g vercel`);
+    return;
+  }
+
+  const vercelUser = getVercelUser();
+  if (vercelUser) {
+    console.log(`${green}[rapidfire-deploy] Authenticated as:${reset} ${cyan}${vercelUser}${reset}`);
+  }
+
   console.log(`\n${cyan}[rapidfire-deploy] Deploying frontend from:${reset} ${targetDir}`);
   console.log(`${cyan}[rapidfire-deploy] Contacting Vercel deployment engine...${reset}`);
 
-  try {
-    const output = execSync('npx --yes vercel --prod --yes', {
-      cwd: targetDir,
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 120000
-    });
+  const result = deployFrontend(targetDir);
 
-    const match = output.match(/https:\/\/[a-zA-Z0-9.-]+\.vercel\.app/i) || output.match(/https:\/\/[a-zA-Z0-9.-]+/);
-    const liveUrl = match ? match[0] : null;
-
+  if (result.success) {
     console.log(`\n${bold}${green}╔════════════════════════════════════════════════════════════════╗${reset}`);
     console.log(`${bold}${green}║                    DEPLOYMENT SUCCESSFUL                       ║${reset}`);
-    if (liveUrl) {
-      console.log(`${bold}${green}║  Live URL: ${cyan}${liveUrl.padEnd(51)}${green}║${reset}`);
+    if (result.url) {
+      console.log(`${bold}${green}║  Live URL: ${cyan}${result.url.padEnd(51)}${green}║${reset}`);
     } else {
       console.log(`${bold}${green}║  Live URL: Check your Vercel Dashboard for live domain         ║${reset}`);
     }
@@ -67,21 +75,18 @@ async function handleDeploy(args = []) {
       console.log(`${yellow}  Rapidfire deploy deployed only the frontend to Vercel.${reset}`);
       console.log(`${yellow}  Your backend was NOT deployed. Deploy it separately to Render, Railway, or serverless.${reset}\n`);
     }
-
-  } catch (err) {
-    const combinedMsg = (err.stdout || '') + (err.stderr || '') + (err.message || '');
-
-    if (combinedMsg.includes('login') || combinedMsg.includes('authentication') || combinedMsg.includes('Not authenticated') || combinedMsg.includes('credential')) {
+  } else {
+    if (result.reason === 'unauthenticated') {
       console.log(`\n${yellow}╔════════════════════════════════════════════════════════════════╗${reset}`);
       console.log(`${yellow}║             VERCEL AUTHENTICATION REQUIRED                     ║${reset}`);
       console.log(`${yellow}╚════════════════════════════════════════════════════════════════╝${reset}`);
       console.log(`To enable one-click deployments without logging in during your demo:`);
-      console.log(`  1. In your terminal, run: ${cyan}npx vercel login${reset}`);
+      console.log(`  1. In your terminal, run: ${cyan}${getVercelExecutable()} login${reset}`);
       console.log(`  2. Authenticate once via your browser.`);
       console.log(`  3. After login, return here and run: ${green}deploy${reset}\n`);
     } else {
-      console.error(`\n${red}[rapidfire-deploy] Deployment failed:${reset}`, err.message);
-      if (err.stderr) console.error(err.stderr);
+      console.error(`\n${red}[rapidfire-deploy] Deployment failed:${reset}`, result.error || result.message);
+      if (result.stderr) console.error(result.stderr);
     }
   }
 }
