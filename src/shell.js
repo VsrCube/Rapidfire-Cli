@@ -182,7 +182,9 @@ class PersistentShell {
   kill() {
     if (this.ptyProcess) {
       try {
-        this.ptyProcess.kill();
+        if (typeof this.ptyProcess.kill === 'function') {
+          this.ptyProcess.kill('SIGKILL');
+        }
       } catch {
       }
       this.ptyProcess = null;
