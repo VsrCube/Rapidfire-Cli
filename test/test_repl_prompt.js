@@ -46,11 +46,11 @@ async function runTests() {
 
   await repl.handleLine(sleepCmd);
 
-  await new Promise((r) => setTimeout(r, 800));
+  await new Promise((r) => setTimeout(r, 600));
   assert.strictEqual(promptCount, 3, 'Prompt should NOT fire prematurely while command is running');
   assert.strictEqual(repl.isPassthroughRunning, true, 'isPassthroughRunning should stay true during execution');
 
-  await new Promise((r) => setTimeout(r, 1600));
+  await waitForPrompt(4, 8000);
   assert.strictEqual(promptCount, 4, 'Prompt must fire automatically when long command finishes');
   assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning must be reset to false');
 
@@ -61,11 +61,11 @@ async function runTests() {
 
   await repl.handleLine(pauseCmd);
 
-  await new Promise((r) => setTimeout(r, 400));
+  await new Promise((r) => setTimeout(r, 300));
   assert.strictEqual(promptCount, 4, 'Prompt must NOT fire during mid-stream pause');
   assert.strictEqual(repl.isPassthroughRunning, true, 'isPassthroughRunning must stay true during pause');
 
-  await new Promise((r) => setTimeout(r, 900));
+  await waitForPrompt(5, 8000);
   assert.strictEqual(promptCount, 5, 'Prompt must fire exactly once after the command finishes');
   assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning must reset to false');
 

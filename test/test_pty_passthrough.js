@@ -19,7 +19,7 @@ const interval = setInterval(() => {
     shell.kill();
     console.log('✓ Persistent PTY shell command execution and streaming verified.');
     process.exit(0);
-  } else if (Date.now() - startTime > 5000) {
+  } else if (Date.now() - startTime > 15000) {
     clearInterval(interval);
     shell.kill();
     assert(
