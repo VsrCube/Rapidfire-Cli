@@ -365,7 +365,7 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     console.warn('[rapidfire] Git initialization notice:', err.message);
   }
 
-  if (blueprint.ecosystem === 'node' && fse.existsSync(path.join(projectPath, 'package.json')) && commandExists('npm')) {
+  if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1' && blueprint.ecosystem === 'node' && fse.existsSync(path.join(projectPath, 'package.json')) && commandExists('npm')) {
     const installPrompt = `\nDo you want to run 'npm install' now? (Y/N): `;
     const shouldInstall = await promptConfirmation(context, installPrompt, 'y');
     if (shouldInstall) {

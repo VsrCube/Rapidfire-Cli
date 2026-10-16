@@ -69,9 +69,17 @@ app.listen(PORT, () => console.log(\`Server running on http://localhost:\${PORT}
 `;
   fse.writeFileSync(path.join(backendDir, 'server.js'), serverJs, 'utf8');
   fse.writeFileSync(path.join(backendDir, '.env.example'), `PORT=${port}\n`, 'utf8');
-  console.log('[rapidfire] Installing backend dependencies...');
-  run('npm install', { cwd: backendDir, stdio: 'pipe' });
-  console.log('[rapidfire] Express backend ready.');
+  if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1') {
+    console.log('[rapidfire] Installing backend dependencies...');
+    try {
+      run('npm install', { cwd: backendDir, stdio: 'pipe' });
+      console.log('[rapidfire] Express backend ready.');
+    } catch (err) {
+      console.warn('\x1b[33m[rapidfire] npm install notice:\x1b[0m', err.message);
+    }
+  } else {
+    console.log('[rapidfire] Express backend ready.');
+  }
 }
 
 function writeDjangoBackend(backendDir, options = {}) {

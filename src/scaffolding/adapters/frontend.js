@@ -5,19 +5,19 @@ const { run } = require('../../utils/proc');
 function scaffoldViteReact(frontendDir, options = {}) {
   fse.ensureDirSync(frontendDir);
   console.log(`[rapidfire] Scaffolding React (Vite) frontend in ${frontendDir}...`);
+  scaffoldViteReactFallback(frontendDir, options);
 
-  try {
-    run(`npx --yes degit vitejs/vite/packages/create-vite/template-react "${frontendDir}"`, {
-      stdio: 'pipe'
-    });
-  } catch {
-    console.log('[rapidfire] Using built-in clean Vite React template...');
-    scaffoldViteReactFallback(frontendDir, options);
+  if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1') {
+    console.log('[rapidfire] Installing React frontend dependencies...');
+    try {
+      run('npm install', { cwd: frontendDir, stdio: 'pipe' });
+      console.log('[rapidfire] React frontend ready.');
+    } catch (err) {
+      console.warn('\x1b[33m[rapidfire] npm install notice:\x1b[0m', err.message);
+    }
+  } else {
+    console.log('[rapidfire] React frontend ready.');
   }
-
-  console.log('[rapidfire] Installing React frontend dependencies...');
-  run('npm install', { cwd: frontendDir, stdio: 'pipe' });
-  console.log('[rapidfire] React frontend ready.');
 }
 
 function scaffoldViteReactFallback(frontendDir, options = {}) {
@@ -66,19 +66,19 @@ ReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><A
 function scaffoldViteVue(frontendDir, options = {}) {
   fse.ensureDirSync(frontendDir);
   console.log(`[rapidfire] Scaffolding Vue 3 (Vite) frontend in ${frontendDir}...`);
+  scaffoldViteVueFallback(frontendDir, options);
 
-  try {
-    run(`npx --yes degit vitejs/vite/packages/create-vite/template-vue "${frontendDir}"`, {
-      stdio: 'pipe'
-    });
-  } catch {
-    console.log('[rapidfire] Using built-in clean Vite Vue template...');
-    scaffoldViteVueFallback(frontendDir, options);
+  if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1') {
+    console.log('[rapidfire] Installing Vue frontend dependencies...');
+    try {
+      run('npm install', { cwd: frontendDir, stdio: 'pipe' });
+      console.log('[rapidfire] Vue frontend ready.');
+    } catch (err) {
+      console.warn('\x1b[33m[rapidfire] npm install notice:\x1b[0m', err.message);
+    }
+  } else {
+    console.log('[rapidfire] Vue frontend ready.');
   }
-
-  console.log('[rapidfire] Installing Vue frontend dependencies...');
-  run('npm install', { cwd: frontendDir, stdio: 'pipe' });
-  console.log('[rapidfire] Vue frontend ready.');
 }
 
 function scaffoldViteVueFallback(frontendDir, options = {}) {
@@ -120,19 +120,19 @@ const count = ref(0);
 function scaffoldViteSvelte(frontendDir, options = {}) {
   fse.ensureDirSync(frontendDir);
   console.log(`[rapidfire] Scaffolding Svelte (Vite) frontend in ${frontendDir}...`);
+  scaffoldViteSvelteFallback(frontendDir, options);
 
-  try {
-    run(`npx --yes degit sveltejs/vite-plugin-svelte/packages/vite-plugin-svelte/templates/svelte "${frontendDir}"`, {
-      stdio: 'pipe'
-    });
-  } catch {
-    console.log('[rapidfire] Using built-in clean Vite Svelte template...');
-    scaffoldViteSvelteFallback(frontendDir, options);
+  if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1') {
+    console.log('[rapidfire] Installing Svelte frontend dependencies...');
+    try {
+      run('npm install --legacy-peer-deps', { cwd: frontendDir, stdio: 'pipe' });
+      console.log('[rapidfire] Svelte frontend ready.');
+    } catch (err) {
+      console.warn('\x1b[33m[rapidfire] npm install notice:\x1b[0m', err.message);
+    }
+  } else {
+    console.log('[rapidfire] Svelte frontend ready.');
   }
-
-  console.log('[rapidfire] Installing Svelte frontend dependencies...');
-  run('npm install --legacy-peer-deps', { cwd: frontendDir, stdio: 'pipe' });
-  console.log('[rapidfire] Svelte frontend ready.');
 }
 
 function scaffoldViteSvelteFallback(frontendDir, options = {}) {

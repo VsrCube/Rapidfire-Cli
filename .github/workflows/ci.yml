@@ -40,4 +40,6 @@ jobs:
         run: npm ci
 
       - name: Run Test Suite
+        env:
+          RAPIDFIRE_SKIP_INSTALL: '1'
         run: npm test

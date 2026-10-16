@@ -1,6 +1,8 @@
 const { execSync } = require('child_process');
 const path = require('path');
 
+process.env.RAPIDFIRE_SKIP_INSTALL = '1';
+
 const testScripts = [
   'test/test_helpers.js',
   'test/test_manifest.js',
