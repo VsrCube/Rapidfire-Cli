@@ -311,7 +311,7 @@ async function handlePush(rawArgs, context = {}) {
       const repoRes = createRepo(cwd, folderName, false);
       if (repoRes.success) {
         hasRemote = true;
-        console.log(`${green}✔ GitHub repository created and linked to origin!${reset}`);
+        console.log(`${green}[OK] GitHub repository created and linked to origin!${reset}`);
       } else {
         console.error(`${red}[rapidfire-git] Could not create GitHub repository: ${repoRes.message || repoRes.error}${reset}`);
         return { success: false, error: 'REPO_CREATION_FAILED' };
@@ -346,13 +346,13 @@ async function handlePush(rawArgs, context = {}) {
   try {
     run(`git push -u origin "${targetBranch}"`, { cwd });
     if (commitMade) {
-      console.log(`\n${green}${bold}✔ Successfully committed and pushed to origin/${targetBranch}!${reset}\n`);
+      console.log(`\n${green}${bold}[OK] Successfully committed and pushed to origin/${targetBranch}!${reset}\n`);
     } else if (!remoteBranchExists) {
-      console.log(`\n${green}${bold}✔ Successfully pushed new branch to origin/${targetBranch}!${reset}\n`);
+      console.log(`\n${green}${bold}[OK] Successfully pushed new branch to origin/${targetBranch}!${reset}\n`);
     } else if (unpushedCommitsCount > 0) {
-      console.log(`\n${green}${bold}✔ Successfully pushed unpushed commits to origin/${targetBranch}!${reset}\n`);
+      console.log(`\n${green}${bold}[OK] Successfully pushed unpushed commits to origin/${targetBranch}!${reset}\n`);
     } else {
-      console.log(`\n${cyan}${bold}✔ origin/${targetBranch} is already up to date (no new changes to push).${reset}\n`);
+      console.log(`\n${cyan}${bold}[OK] origin/${targetBranch} is already up to date (no new changes to push).${reset}\n`);
     }
     return {
       success: true,
@@ -368,7 +368,7 @@ async function handlePush(rawArgs, context = {}) {
         run(`git pull --rebase origin "${targetBranch}"`, { cwd });
         console.log(`${cyan}[rapidfire-git] Retrying push to origin/${targetBranch}...${reset}`);
         run(`git push -u origin "${targetBranch}"`, { cwd });
-        console.log(`\n${green}${bold}✔ Successfully synced and pushed to origin/${targetBranch}!${reset}\n`);
+        console.log(`\n${green}${bold}[OK] Successfully synced and pushed to origin/${targetBranch}!${reset}\n`);
         return {
           success: true,
           branch: targetBranch,

@@ -149,6 +149,6 @@ async function runTests() {
 }
 
 runTests().catch((err) => {
-  console.error('\n❌ Test failed with error:', err);
+  console.error('\n[ERROR] Test failed with error:', err);
   process.exit(1);
 });

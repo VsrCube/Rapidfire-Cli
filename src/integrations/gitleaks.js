@@ -36,13 +36,13 @@ EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
   echo ""
-  echo "❌ [rapidfire-security] Gitleaks detected sensitive credentials in your commits!"
+  echo "[BLOCKED] [rapidfire-security] Gitleaks detected sensitive credentials in your commits!"
   echo "Push has been blocked to prevent secret leaks."
   echo "Review the output above and revoke/remove exposed tokens before pushing."
   exit 1
 fi
 
-echo "✓ [rapidfire-security] No leaks detected. Push proceeding."
+echo "[OK] [rapidfire-security] No leaks detected. Push proceeding."
 exit 0
 `;
 

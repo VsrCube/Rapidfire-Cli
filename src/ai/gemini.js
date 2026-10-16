@@ -16,6 +16,8 @@ module.exports = {
   explainDirectory: provider.explainDirectory,
   fallbackExplainFile: provider.fallbackExplainFile,
   fallbackExplainDirectory: provider.fallbackExplainDirectory,
+  generateRepoOverview: provider.generateRepoOverview,
+  fallbackRepoOverview: provider.fallbackRepoOverview,
   clearAskHistory: provider.clearAskHistory,
   getAskHistory: provider.getAskHistory
 };

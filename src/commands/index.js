@@ -7,6 +7,7 @@ const { handleDeploy } = require('./deploy');
 const { handleTell } = require('./tell');
 const { handleKey } = require('./key');
 const { handleExplain } = require('./explain');
+const { handleOverview } = require('./overview');
 const { handlePush } = require('./push');
 
 function matchCommand(line) {
@@ -26,6 +27,16 @@ function matchCommand(line) {
     return {
       name: 'push',
       run: async (context) => handlePush(trimmed, context)
+    };
+  }
+
+  if (cmd === 'run' || cmd === 'start' || cmd === 'serve') {
+    return {
+      name: 'run',
+      run: async () => {
+        const { handleRun } = require('./run');
+        return handleRun(tokens.slice(1));
+      }
     };
   }
 
@@ -200,6 +211,13 @@ function matchCommand(line) {
     };
   }
 
+  if (cmd === 'overview') {
+    return {
+      name: 'overview',
+      run: async () => handleOverview(tokens.slice(1))
+    };
+  }
+
   return null;
 }
 
@@ -221,7 +239,11 @@ const COMMON_SUGGESTIONS = {
   deply: 'deploy',
   psuh: 'push',
   puhs: 'push',
-  phsu: 'push'
+  phsu: 'push',
+  overveiw: 'overview',
+  overiew: 'overview',
+  overivew: 'overview',
+  ovreview: 'overview'
 };
 
 function getKeywordSuggestion(word) {

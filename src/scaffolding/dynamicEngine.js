@@ -217,7 +217,7 @@ You MUST respond ONLY with valid JSON in this exact schema, without markdown for
   ]
 }`;
 
-    const res = await provider.askAI(prompt);
+    const res = await provider.askAI(prompt, { isChat: false });
     const raw = (res && res.text) ? res.text : (typeof res === 'string' ? res : '');
     const cleanJson = raw.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
     const parsed = JSON.parse(cleanJson);
@@ -274,16 +274,19 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
   console.log(`\n\x1b[36m[rapidfire-dynamic] Generating blueprint for unknown framework '${stack}'...\x1b[0m`);
   const blueprint = await generateBlueprint(stack, targetFolder);
 
-  console.log(`\n\x1b[32m✔ Blueprint:\x1b[0m ${blueprint.summary}`);
+  console.log(`\n\x1b[32m[Blueprint]:\x1b[0m ${blueprint.summary}`);
   console.log(`\x1b[1mProposed files to generate in '${targetFolder}':\x1b[0m`);
 
   const sanitizedFiles = [];
   for (const file of blueprint.files) {
-    const cleanName = path.normalize(file.filename).replace(/^(\.\.[\/\\])+/, '');
+    let cleanName = path.normalize(file.filename).replace(/^(\.\.[\/\\])+/, '');
+    if (cleanName.startsWith(targetFolder + path.sep) || cleanName.startsWith(targetFolder + '/')) {
+      cleanName = cleanName.slice(targetFolder.length + 1);
+    }
     const absPath = path.resolve(projectPath, cleanName);
 
     if (!absPath.startsWith(projectPath)) {
-      console.warn(`  \x1b[33m⚠ Skipped unsafe file path: ${file.filename}\x1b[0m`);
+      console.warn(`  \x1b[33m[WARN] Skipped unsafe file path: ${file.filename}\x1b[0m`);
       continue;
     }
 
@@ -385,7 +388,7 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
         console.log(`[rapidfire] Creating remote GitHub repository '${targetFolder}'...`);
         const res = createRepo(projectPath, targetFolder, false);
         if (res.success) {
-          console.log(`\x1b[32m✔ Remote GitHub repository '${targetFolder}' created and linked to origin!\x1b[0m`);
+          console.log(`\x1b[32m[OK] Remote GitHub repository '${targetFolder}' created and linked to origin!\x1b[0m`);
         }
       }
     }

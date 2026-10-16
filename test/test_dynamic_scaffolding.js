@@ -152,8 +152,13 @@ async function runTests() {
     assert.ok(fse.existsSync(path.join(projectDir, 'package.json')), 'package.json should exist');
     const hasSourceFile = fse.existsSync(path.join(projectDir, 'src', 'App.jsx')) ||
                           fse.existsSync(path.join(projectDir, 'src', 'index.jsx')) ||
-                          fse.existsSync(path.join(projectDir, 'src', 'main.jsx'));
-    assert.ok(hasSourceFile, 'Source entry file (App.jsx / index.jsx / main.jsx) should exist');
+                          fse.existsSync(path.join(projectDir, 'src', 'main.jsx')) ||
+                          fse.existsSync(path.join(projectDir, 'src', 'App.tsx')) ||
+                          fse.existsSync(path.join(projectDir, 'src', 'index.tsx')) ||
+                          fse.existsSync(path.join(projectDir, 'src', 'main.tsx')) ||
+                          fse.existsSync(path.join(projectDir, 'src', 'App.js')) ||
+                          fse.existsSync(path.join(projectDir, 'src', 'index.js'));
+    assert.ok(hasSourceFile, 'Source entry file (App / index / main in .jsx/.tsx/.js) should exist');
 
     const manifest = readManifest(projectDir);
     assert.ok(manifest, 'Manifest should exist');

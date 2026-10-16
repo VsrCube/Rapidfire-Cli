@@ -33,7 +33,7 @@ class RapidfireRepl {
   }
 
   start() {
-    process.stdout.write('\x1b[?9001l\x1b[?1004l');
+    process.stdout.write('\x1b[?9001l\x1b[?1004l\x1b]133;D;0\x07');
     this.printBanner();
 
     this.rl = readline.createInterface({

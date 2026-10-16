@@ -30,7 +30,7 @@ RapidFire is a lightweight terminal overlay and interactive developer environmen
 | 10 | **Unified Git & GitHub Automation** | Single-command staging, commit, push, branch management & auto `gh` repo | [View](#unified-git--github-automation) |
 | 11 | **Bidirectional History & Highlighting** | Bidirectional shell history sync (Bash/Zsh/PowerShell), live syntax highlighting | [View](#bidirectional-terminal-history--real-time-highlighting) |
 | 12 | **Command Reference** | Comprehensive quick-reference table for all RapidFire commands | [View](#command-reference) |
-| 13 | **Testing & Verification** | 26 automated test suites, simulated remotes, security audit checks | [View](#testing--verification) |
+| 13 | **Testing & Verification** | 30 automated test suites, simulated remotes, security audit checks | [View](#testing--verification) |
 | 14 | **License** | Open-source MIT license details | [View](#license) |
 
 ---
@@ -92,6 +92,8 @@ graph TD
     Lexer -->|setup| ScaffoldingEngine["3-Tier Scaffolding Engine (src/commands/setup.js)"]
     Lexer -->|push| GitEngine["Unified Git & Security Engine (src/commands/push.js)"]
     Lexer -->|ask / suggest / tell / explain| AIEngine["Multi-Provider AI Engine (src/ai/provider.js)"]
+    Lexer -->|overview| OverviewEngine["Repository Architecture & Critic (src/commands/overview.js)"]
+    Lexer -->|run| RunEngine["Application Runner (src/commands/run.js)"]
     Lexer -->|preset| PresetEngine["Smart Presets & Manifests (src/commands/preset.js)"]
     Lexer -->|deploy| DeployEngine["Vercel Cloud Deployments (src/commands/deploy.js)"]
 
@@ -470,10 +472,70 @@ key model <model-name>
 key clear
 ```
 
-### Conversational Memory & Code Understanding
-- `ask <question>`: Technical Q&A with multi-turn conversation memory.
-- `ask clear`: Reset conversation memory.
-- `explain [path]`: Explain file architecture or directory trees (`explain src/repl.js` or `explain .`).
+### Repository Architecture, Code Understanding & Application Runner
+
+RapidFire provides deep codebase introspection designed for engineers, eliminating textbook filler and delivering actionable architecture breakdowns:
+
+#### 1. Repository Architecture Overview (`overview`)
+Analyzes the entire repository topology and exports an authoritative report to `md/overview.md`:
+```bash
+# Inside RapidFire REPL:
+overview
+
+# Or directly from your terminal:
+rapidfire overview
+```
+* **Living Markdown Export**: Automatically generates and rewrites `md/overview.md` on every run.
+* **Structured Sections**:
+  1. Executive Summary & Purpose
+  2. Tech Stack & Infrastructure Matrix
+  3. Architecture & Data Flow Map (ASCII system boundary diagram)
+  4. Directory & Module Responsibilities
+  5. Execution Entry Points & Developer Workflows
+* **Offline Deterministic Fallback**: Analyzes package manifests, directory trees, and dependencies locally with zero API key required.
+
+#### 2. Staff-Engineer Architectural Critique (`overview --critic`)
+Audits repository health with candid, rigorous senior code review:
+```bash
+overview --critic
+# Typo-tolerant: overview --cirtic is also supported
+```
+* **Evaluation Categories**:
+  1. Architectural Verdict & Health Rating (Design score & maturity assessment)
+  2. The Goods (Clean patterns, modular separation, strength in design)
+  3. The Bads & Flaws (Anti-patterns, code smells, tight coupling, testing gaps)
+  4. Pros & Cons Analysis (Trade-offs of selected tech stack)
+  5. Actionable Roadmap & Priority Fixes (Ranked recommendations)
+* **Dual Export**: Overwrites `md/overview.md` with the critique and also creates `md/overview_critic.md`.
+
+#### 3. Granular Source & Directory Analysis (`explain`)
+Inspects individual files, subdirectories, or whole projects:
+```bash
+explain src/repl.js
+explain src
+explain .
+```
+* **Target-Specific Filenames**: Automatically names exports based on target and date: `md/<target>_explain_<YYYY-MM-DD>.md` (e.g., `md/src_explain_2026-10-16.md`), with dual backward-compatibility via `md/explanation.md`.
+* **Zero Textbook Filler**: Delivers direct senior-level architectural insights.
+* **Responsive Terminal Boxes**: Wraps text dynamically inside borders matched to terminal width (`process.stdout.columns`) so content never overflows terminal windows.
+
+#### 4. Repository-Aware Persistent Memory (`.rapidfire/memory.json`)
+* Automatically records conversation turns, explanations, and overview audits per repository.
+* Preserves context across terminal sessions so `ask` queries know previous architectural insights.
+* Automatically protected in `.gitignore`.
+
+#### 5. Interactive Full-Stack Application Runner (`run`)
+Launches full-stack applications with automatic port resolution:
+```bash
+run backend
+run my_project
+```
+* Supports aliases `run`, `start`, and `serve`.
+* Automatically resolves frontend (:3000) and backend (:8000/:5000) dev servers.
+
+#### 6. Conversational Q&A & Generation
+- `ask <question>`: Technical Q&A with repo-aware conversational memory & 1-click package installer.
+- `ask clear`: Reset conversation memory for the active repository.
 - `suggest <description>`: Recommends full-stack architectures with interactive `(Y/N)` scaffolding confirmation.
 - `tell <instruction>`: Generates multi-file code structures with plan preview and safety approval.
 
@@ -561,7 +623,9 @@ RapidFire seamlessly synchronizes command history across your host operating sys
 | `init` / `setup <recipe> <folder>` | Scaffolding | Scaffold any of the 13 built-in full-stack projects or initialize RapidFire |
 | `setup <fe>+<be> <folder>` | Dynamic Scaffolding | Dynamically compose unlisted pairings (e.g. `setup svelte+fastapi myapp`) |
 | `setup <unknown> <folder>` | AI Scaffolding | Dynamically scaffold unknown frameworks (e.g. `hono`, `astro`, `solid`, `nextjs`) |
-| `explain [path]` | AI Analysis | Explains codebase architecture, folder tree, or source file role |
+| `overview [--critic]` | AI Architecture | Living repository architecture overview (`md/overview.md`); `--critic` audits strengths, flaws, and pros/cons |
+| `explain [path]` | AI Analysis | Explains codebase architecture, folder tree, or source file role (exports `md/<target>_explain_<date>.md`) |
+| `run [folder]` | Application Runner | Launch full-stack microservices & dev servers with automatic port resolution (aliases: `start`, `serve`) |
 | `ask <question>` | AI Companion | Technical Q&A with conversational memory & 1-click package installer |
 | `ask clear` | AI Companion | Clear conversation context memory |
 | `suggest <description>` | AI Companion | Recommends optimal architecture with interactive `(Y/N)` scaffold prompt |
@@ -590,9 +654,9 @@ npm test
 
 ```text
 ======================================================
-Summary: 26 passed, 0 failed (26 total)
+Summary: 30 passed, 0 failed (30 total)
 ======================================================
-ALL 26 TEST SUITES PASSED FLAWLESSLY!
+ALL 30 TEST SUITES PASSED FLAWLESSLY!
 ```
 
 ---

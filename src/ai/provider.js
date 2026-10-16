@@ -4,6 +4,13 @@ const https = require('https');
 const http = require('http');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { getUserConfig } = require('../utils/configPath');
+const {
+  findRepoRoot,
+  getConversationTurns,
+  recordConversationTurn,
+  clearRepoMemory
+} = require('../utils/repoMemory');
+const { buildRepoContext } = require('../utils/repoContext');
 
 const SUPPORTED_STACKS = [
   'react+fastapi',
@@ -23,11 +30,22 @@ const SUPPORTED_STACKS = [
 
 let askHistory = [];
 
-function clearAskHistory() {
+function clearAskHistory(targetRoot) {
   askHistory = [];
+  try {
+    const root = targetRoot || findRepoRoot(process.cwd());
+    if (root) clearRepoMemory(root);
+  } catch {}
 }
 
-function getAskHistory() {
+function getAskHistory(targetRoot) {
+  try {
+    const root = targetRoot || findRepoRoot(process.cwd());
+    const persisted = getConversationTurns(root, 20);
+    if (persisted && persisted.length > 0) {
+      return persisted;
+    }
+  } catch {}
   return askHistory;
 }
 
@@ -303,7 +321,7 @@ function formatErrorMessage(err) {
   return `AI query failed: ${msg.split('\n')[0]}`;
 }
 
-async function askAI(question) {
+async function askAI(question, options = {}) {
   const config = getActiveAiConfig();
   if (!config.apiKey) {
     return {
@@ -313,22 +331,51 @@ async function askAI(question) {
     };
   }
 
+  const isChat = options.isChat !== false;
+  const repoRoot = (options && options.repoRoot) ? options.repoRoot : findRepoRoot(process.cwd());
+  const repoContext = buildRepoContext(repoRoot, question);
+  const persistedHistory = isChat ? getConversationTurns(repoRoot, 10) : [];
+  const activeHistory = isChat ? ((persistedHistory && persistedHistory.length > 0) ? persistedHistory : askHistory) : [];
+
+  const systemInstruction = options.systemInstruction || `You are the in-terminal developer assistant for Rapidfire CLI with complete context of the local repository "${repoContext.repoName}".
+
+[CURRENT REPOSITORY ARCHITECTURE & CONTEXT]
+${repoContext.summary}
+
+CRITICAL OPERATIONAL RULES:
+1. REPO-SPECIFIC INQUIRIES: When asked about this repository, architecture, files, commands, setup, or workflow:
+   - Provide direct, senior-engineer architectural insights.
+   - Core Focus: What the product DOES, how data flows from user input to execution, and how modules are organized.
+   - For overview questions ("how does this repo work" or "what does this repo do"), structure the response into 4 distinct, concise sections:
+     1. Executive Summary: What problem this project solves in 1-2 punchy sentences.
+     2. Architecture & Data Flow: How user input flows from entrypoint to router, handlers, and external tools/PTY.
+     3. Key Components: Concrete roles of key directories and modules (e.g. commands, scaffolding, ai, integrations).
+     4. Developer Quickstart: Exact commands to run locally, execute tests, and configure.
+   - ZERO TEXTBOOK FILLER: Never explain generic programming mechanics (e.g. do not explain that Node uses process.argv, or what fs/fs-extra is). Treat the user as an experienced engineer who wants project-specific architecture.
+   - Keep answers structured with short bullet points, code blocks where helpful, and concise line lengths.
+2. GENERAL INQUIRIES: If the user asks a general question unrelated to this repository (e.g. general syntax, algorithms, or external tools), answer directly, concisely, and practically as an expert coding assistant without forcing repository context.
+3. Clean Terminal Output: Provide concise, high-signal explanations with markdown code blocks where helpful. Never output emojis.`;
+
   try {
     const text = await queryAi({
       prompt: question,
-      systemInstruction: 'You are the in-terminal developer assistant for Rapidfire CLI. Provide clear, concise, practical coding answers tailored for the terminal. Use markdown code snippets where helpful.',
-      history: askHistory,
-      isChat: true
+      systemInstruction,
+      history: activeHistory,
+      isChat
     });
 
-    askHistory.push({ role: 'user', parts: [{ text: question }] });
-    askHistory.push({ role: 'model', parts: [{ text }] });
+    if (isChat) {
+      recordConversationTurn(repoRoot, question, text);
+      askHistory.push({ role: 'user', parts: [{ text: question }] });
+      askHistory.push({ role: 'model', parts: [{ text }] });
+    }
 
     return {
       success: true,
       text,
       model: config.model,
-      provider: config.name
+      provider: config.name,
+      repoName: repoContext.repoName
     };
   } catch (err) {
     return {
@@ -542,7 +589,10 @@ async function instructAI(instruction) {
   const prompt = `You are an AI code and file generator assistant for Rapidfire CLI.
 The user instructs you: "${instruction}".
 Generate the complete, production-ready code files requested.
-You MUST respond ONLY with valid JSON in this exact schema, without markdown formatting or code blocks:
+CRITICAL RULES:
+1. Do NOT generate or overwrite 'package.json' or 'README.md' unless the user explicitly requested creating a project boilerplate or package.
+2. If the user asks for a utility script or helper function, generate a single dedicated standalone script file (e.g. 'script.js', 'tool.py', 'helper.sh').
+3. You MUST respond ONLY with valid JSON in this exact schema, without markdown formatting or code blocks:
 {
   "summary": "Brief 1-sentence description of what files were created",
   "files": [
@@ -829,7 +879,7 @@ function fallbackExplainDirectory(dirPath) {
   let treeStr = '';
   for (const item of items.slice(0, 35)) {
     const indent = '  '.repeat(item.depth);
-    treeStr += `${indent}${item.isDir ? '📁 ' : '📄 '}${item.name}\n`;
+    treeStr += `${indent}${item.isDir ? '[DIR]  ' : '       '}${item.name}\n`;
   }
   if (items.length > 35) {
     treeStr += `  ... and ${items.length - 35} more files\n`;
@@ -970,7 +1020,7 @@ async function explainDirectory(dirPath) {
   let treeStr = '';
   for (const item of items.slice(0, 40)) {
     const indent = '  '.repeat(item.depth);
-    treeStr += `${indent}${item.isDir ? '📁 ' : '📄 '}${item.name}\n`;
+    treeStr += `${indent}${item.isDir ? '[DIR]  ' : '       '}${item.name}\n`;
   }
 
   let manifestSnippet = '';
@@ -1029,6 +1079,266 @@ Provide a clean, structured response:
   }
 }
 
+function fallbackRepoOverview(repoPath, options = {}) {
+  const resolved = path.resolve(repoPath || process.cwd());
+  if (!fs.existsSync(resolved)) {
+    return {
+      success: false,
+      error: 'NOT_FOUND',
+      message: `Repository path not found: ${resolved}`
+    };
+  }
+
+  const isCritic = Boolean(options && (options.critic || options.cirtic));
+  const repoName = path.basename(resolved);
+  const items = scanDirectoryTree(resolved, 2);
+
+  const subdirs = items.filter(i => i.isDir && i.depth === 0).map(i => i.name);
+  const fileItems = items.filter(i => !i.isDir);
+
+  const stacks = [];
+  let pkgName = repoName;
+  let pkgVersion = '1.0.0';
+  let scripts = [];
+  let deps = [];
+  let devDeps = [];
+
+  const pkgPath = path.join(resolved, 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      if (pkg.name) pkgName = pkg.name;
+      if (pkg.version) pkgVersion = pkg.version;
+      scripts = Object.keys(pkg.scripts || {});
+      deps = Object.keys(pkg.dependencies || {});
+      devDeps = Object.keys(pkg.devDependencies || {});
+      const all = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+      if (all.react) stacks.push('React');
+      if (all.vue) stacks.push('Vue');
+      if (all.svelte) stacks.push('Svelte');
+      if (all.express) stacks.push('Express');
+      if (all.vite) stacks.push('Vite');
+      if (all['@google/generative-ai']) stacks.push('Google Gemini AI');
+      if (stacks.length === 0) stacks.push('Node.js');
+    } catch {
+      stacks.push('Node.js');
+    }
+  }
+
+  const reqPath = path.join(resolved, 'requirements.txt');
+  if (fs.existsSync(reqPath)) {
+    try {
+      const reqs = fs.readFileSync(reqPath, 'utf8').toLowerCase();
+      if (reqs.includes('fastapi')) stacks.push('FastAPI');
+      if (reqs.includes('django')) stacks.push('Django');
+      if (reqs.includes('flask')) stacks.push('Flask');
+      if (stacks.length === 0) stacks.push('Python');
+    } catch {
+      stacks.push('Python');
+    }
+  }
+
+  if (fs.existsSync(path.join(resolved, 'Cargo.toml'))) stacks.push('Rust');
+  if (fs.existsSync(path.join(resolved, 'go.mod'))) stacks.push('Go');
+  if (stacks.length === 0) stacks.push('General Software Repository');
+
+  let text = '';
+  if (isCritic) {
+    text = `# Architectural Critique: ${pkgName}\n\n`;
+    text += `Target: ${resolved}\n`;
+    text += `Evaluated Stack: ${stacks.join(', ')}\n\n`;
+
+    text += `## 1. Architectural Verdict & Health\n`;
+    text += `The repository exhibits a structured layout with modular components. `;
+    if (subdirs.includes('test') || subdirs.includes('tests')) {
+      text += `Automated verification suites are present, providing baseline regression safety. `;
+    } else {
+      text += `Automated testing coverage is missing or non-standard, creating elevated regression risk. `;
+    }
+    text += `Overall architectural rating: ${subdirs.includes('src') && (subdirs.includes('test') || subdirs.includes('tests')) ? 'B+ (Solid Foundation)' : 'B- (Needs Hardening)'}.\n\n`;
+
+    text += `## 2. The Goods (Strengths & Clean Patterns)\n`;
+    if (subdirs.includes('src')) {
+      text += `• Clean Separation of Concerns: Core source logic is organized under src/, isolating business domain code from tooling.\n`;
+    }
+    if (subdirs.includes('test') || subdirs.includes('tests')) {
+      text += `• Test Suite Presence: Dedicated verification suites exist to validate system behavior.\n`;
+    }
+    if (scripts.includes('test') || scripts.includes('start')) {
+      text += `• Standardized NPM Workflows: Defined lifecycle scripts provide predictable local developer experience.\n`;
+    }
+    if (deps.length > 0) {
+      text += `• Controlled Dependencies: Explicit manifest declarations bound in package.json.\n`;
+    }
+
+    text += `\n## 3. The Bads & Flaws (Anti-Patterns, Risks & Code Smells)\n`;
+    if (deps.length > 20) {
+      text += `• Heavy Dependency Footprint: ${deps.length} direct runtime dependencies increase attack surface and maintenance burden.\n`;
+    }
+    if (!subdirs.includes('test') && !subdirs.includes('tests')) {
+      text += `• Zero Dedicated Test Directory: Critical testing gap increases probability of production regressions.\n`;
+    }
+    text += `• Configuration Coupled to Runtime: Ensure environment variables and credentials remain isolated from codebase files.\n`;
+    text += `• Scalability Constraints: Evaluate whether single-process execution models handle larger concurrent workloads.\n\n`;
+
+    text += `## 4. Pros & Cons Analysis\n`;
+    text += `• Pros:\n`;
+    text += `  - Streamlined developer setup with fast initial boot.\n`;
+    text += `  - Modular directory layout allowing predictable file navigation.\n`;
+    text += `  - Lean architecture minimizing unnecessary enterprise boilerplate.\n`;
+    text += `• Cons:\n`;
+    text += `  - Lack of strict static typing (unless TypeScript is configured) increases potential runtime type exceptions.\n`;
+    text += `  - Potential coupling between command routing and core orchestration routines.\n\n`;
+
+    text += `## 5. Actionable Roadmap & Priority Fixes\n`;
+    text += `1. High Priority: Expand automated integration tests covering end-to-end execution paths.\n`;
+    text += `2. Medium Priority: Implement strict schema validation on all inputs and configuration boundaries.\n`;
+    text += `3. Low Priority: Add automated CI/CD pipeline checks for code formatting, linting, and security audits.\n`;
+  } else {
+    text = `# Repository Architecture Overview: ${pkgName} (v${pkgVersion})\n\n`;
+    text += `Location: ${resolved}\n`;
+    text += `Primary Stack: ${stacks.join(', ')}\n`;
+    text += `Total Tracked Modules/Files: ${items.length}\n\n`;
+
+    text += `## 1. Executive Summary & Purpose\n`;
+    text += `${pkgName} is a software project structured around ${stacks.join(', ')}. `;
+    text += `It provides modularized functionality separated into distinct directories for source code, command execution, and verification.\n\n`;
+
+    text += `## 2. Tech Stack & Infrastructure\n`;
+    text += `• Runtimes & Frameworks: ${stacks.join(', ')}\n`;
+    if (deps.length > 0) {
+      text += `• Key Dependencies: ${deps.slice(0, 10).join(', ')}${deps.length > 10 ? ` (+${deps.length - 10} more)` : ''}\n`;
+    }
+    if (devDeps.length > 0) {
+      text += `• Dev Tools: ${devDeps.slice(0, 8).join(', ')}\n`;
+    }
+    if (scripts.length > 0) {
+      text += `• Lifecycle Scripts: ${scripts.join(', ')}\n`;
+    }
+
+    text += `\n## 3. Architecture & Data Flow Map\n`;
+    text += `┌────────────────┐      ┌─────────────────┐      ┌────────────────┐\n`;
+    text += `│  CLI / Entry   │ ───> │  Command Router │ ───> │ Domain Logic   │\n`;
+    text += `│  (bin/ or npm) │      │  (src/commands) │      │ (src/utils/ai) │\n`;
+    text += `└────────────────┘      └─────────────────┘      └────────────────┘\n`;
+    text += `                                                          │\n`;
+    text += `                                                          ▼\n`;
+    text += `                                                 ┌────────────────┐\n`;
+    text += `                                                 │ Markdown / DB  │\n`;
+    text += `                                                 │ (md/ & memory) │\n`;
+    text += `                                                 └────────────────┘\n\n`;
+
+    text += `## 4. Directory & Module Responsibilities\n`;
+    for (const sub of subdirs) {
+      if (sub === 'src') text += `• src/: Core application business logic, utilities, and execution engines.\n`;
+      else if (sub === 'bin') text += `• bin/: Executable binary wrappers and CLI entrypoints.\n`;
+      else if (sub === 'test' || sub === 'tests') text += `• test/: Automated verification suites and integration tests.\n`;
+      else if (sub === 'md') text += `• md/: Generated documentation and architectural markdown exports.\n`;
+      else text += `• ${sub}/: Domain module containing specialized project assets and submodules.\n`;
+    }
+
+    text += `\n## 5. Execution Entry Points & Developer Workflows\n`;
+    if (scripts.includes('start')) text += `• npm start: Launches the standard project application process.\n`;
+    if (scripts.includes('test')) text += `• npm test: Executes the test suite.\n`;
+    if (fs.existsSync(path.join(resolved, 'bin/rapidfire.js'))) text += `• node bin/rapidfire.js: Launches the RapidFire CLI and REPL.\n`;
+  }
+
+  return {
+    success: true,
+    isFallback: true,
+    text
+  };
+}
+
+async function generateRepoOverview(repoPath, options = {}) {
+  const resolved = path.resolve(repoPath || process.cwd());
+  if (!fs.existsSync(resolved)) {
+    return {
+      success: false,
+      error: 'NOT_FOUND',
+      message: `Repository path not found: ${resolved}`
+    };
+  }
+
+  const isCritic = Boolean(options && (options.critic || options.cirtic));
+  const config = getActiveAiConfig();
+  if (!config.apiKey) {
+    return fallbackRepoOverview(resolved, options);
+  }
+
+  const repoContext = buildRepoContext(resolved);
+
+  let prompt = '';
+  let systemInstruction = '';
+
+  if (isCritic) {
+    systemInstruction = 'You are the senior staff software architect and principal code reviewer for RapidFire CLI. Provide a rigorous, constructive, and comprehensive critique of repository design and engineering practices.';
+    prompt = `Conduct an in-depth, candid, and constructive architectural critique of this repository. Evaluate code hygiene, separation of concerns, test coverage, potential vulnerabilities, and scalability trade-offs.
+
+Repository Context:
+${repoContext.summary}
+
+Provide your critique structured under these exact headers:
+# Architectural Critique: ${repoContext.repoName}
+
+## 1. Architectural Verdict & Health
+(Overall technical evaluation, maturity assessment, and architecture design rating)
+
+## 2. The Goods (Strengths & Clean Patterns)
+(Specific well-designed abstractions, separation of concerns, strengths in project organization)
+
+## 3. The Bads & Flaws (Anti-Patterns, Risks & Code Smells)
+(Specific architectural flaws, monolithic components, tight coupling, testing gaps, fragile dependencies)
+
+## 4. Pros & Cons Analysis
+• Pros: (Key advantages of chosen technology stack and architectural approach)
+• Cons: (Operational, scalability, or maintenance drawbacks)
+
+## 5. Actionable Roadmap & Priority Fixes
+(Ranked list of highest-impact refactorings and structural enhancements)`;
+  } else {
+    systemInstruction = 'You are the expert software architect assistant for RapidFire CLI. Provide clean, highly structured, technical codebase architecture overviews.';
+    prompt = `Analyze and provide a comprehensive, developer-centric architectural overview of this repository.
+
+Repository Context:
+${repoContext.summary}
+
+Provide your overview structured under these exact headers:
+# Repository Architecture Overview: ${repoContext.repoName}
+
+## 1. Executive Summary & Purpose
+(Primary problem domain, core capabilities, and high-level role)
+
+## 2. Tech Stack & Infrastructure
+(Runtimes, frameworks, dependencies, and external integrations)
+
+## 3. Architecture & Data Flow Map
+(ASCII diagram depicting components, modules, data flow, and system boundaries)
+
+## 4. Directory & Module Responsibilities
+(Detailed breakdown of each major directory and component responsibility)
+
+## 5. Execution Entry Points & Developer Workflows
+(Main entry points, development scripts, testing commands, and deployment pathways)`;
+  }
+
+  try {
+    const text = await queryAi({
+      prompt,
+      systemInstruction
+    });
+
+    return {
+      success: true,
+      isFallback: false,
+      text,
+      model: config.model
+    };
+  } catch {
+    return fallbackRepoOverview(resolved, options);
+  }
+}
+
 module.exports = {
   SUPPORTED_STACKS,
   hasApiKey,
@@ -1043,6 +1353,8 @@ module.exports = {
   explainDirectory,
   fallbackExplainFile,
   fallbackExplainDirectory,
+  generateRepoOverview,
+  fallbackRepoOverview,
   clearAskHistory,
   getAskHistory
 };

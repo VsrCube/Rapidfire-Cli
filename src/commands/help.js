@@ -41,6 +41,8 @@ ${bold}PROJECT SCAFFOLDING RECIPES (7 FRAMEWORKS / 13 OPTIONS):${reset}
     ${green}init [rapidfire]${reset}              Interactive scaffolding guide & prompt
 
 ${bold}AI CODE GENERATION & ASSISTANCE:${reset}
+  ${magenta}overview [--critic]${reset}          Comprehensive repo architecture overview (exports md/overview.md)
+                                (--critic evaluates strengths, flaws, anti-patterns, pros & cons)
   ${magenta}explain [file|folder]${reset}         Analyze codebase architecture, folder tree, or source file role
                                 (e.g. "explain src/repl.js" or "explain .")
   ${magenta}tell <instruction>${reset}            Generate files & code with structure preview & (Y/N) safety approval
@@ -73,6 +75,10 @@ ${bold}GIT & GITHUB AUTOMATION:${reset}
 
 ${bold}PRODUCTION DEPLOYMENT:${reset}
   ${cyan}deploy vercel [folder]${reset}         Deploy frontend to Vercel production with clean working tree verification
+
+${bold}APPLICATION EXECUTION & RUNNER:${reset}
+  ${green}run [folder]${reset}                    Launch microservice dev servers (FastAPI / Express + React / Vue / Svelte)
+                                Automatically resolves backend port (:8000/:5000) and frontend port (:3000)
 
 ${bold}SESSION COMMANDS:${reset}
   ${cyan}help${reset}                           Display this command reference

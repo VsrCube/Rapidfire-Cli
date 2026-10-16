@@ -49,14 +49,65 @@ export default defineConfig({ plugins: [react()], server: { port: 3000 } });
 `, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
-  fse.writeFileSync(path.join(srcDir, 'index.css'), `body { margin: 0; background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; display: flex; min-height: 100vh; align-items: center; justify-content: center; }`, 'utf8');
+  fse.writeFileSync(path.join(srcDir, 'index.css'), `* { box-sizing: border-box; margin: 0; padding: 0; }
+body { margin: 0; background: #0b0f19; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; display: flex; min-height: 100vh; align-items: center; justify-content: center; }`, 'utf8');
   fse.writeFileSync(path.join(srcDir, 'App.jsx'), `import React, { useState } from 'react';
+
 export default function App() {
   const [count, setCount] = useState(0);
+  const [apiResponse, setApiResponse] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const testBackendApi = async () => {
+    setLoading(true);
+    try {
+      // Test FastAPI (8000) or Express (5000)
+      const port = 8000;
+      let res;
+      try {
+        res = await fetch('http://localhost:8000/api/health');
+      } catch {
+        res = await fetch('http://localhost:5000/api/health');
+      }
+      const data = await res.json();
+      setApiResponse({ status: 'success', data });
+    } catch (err) {
+      setApiResponse({ status: 'offline', error: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div style={{ textAlign: 'center' }}>
-      <h1>Rapidfire React App</h1>
-      <button style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', background: '#38bdf8', border: 'none', fontWeight: 'bold' }} onClick={() => setCount(c => c + 1)}>Count: {count}</button>
+    <div style={{ maxWidth: '640px', width: '90%', background: '#131b2e', border: '1px solid #1e293b', borderRadius: '16px', padding: '2.5rem', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', textAlign: 'center' }}>
+      <div style={{ display: 'inline-block', padding: '0.25rem 0.75rem', borderRadius: '999px', background: 'rgba(6,182,212,0.15)', color: '#06b6d4', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
+        [ARCH] Dual-Tier Microservice Architecture
+      </div>
+      <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem', background: 'linear-gradient(135deg, #38bdf8, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+        RapidFire Full-Stack Application
+      </h1>
+      <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '2rem' }}>
+        Frontend (React 18 Vite) connected to Backend API with pre-configured CORS and GitLeaks security.
+      </p>
+
+      <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <button style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: '#2563eb', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', transition: 'transform 0.1s' }} onClick={() => setCount(c => c + 1)}>
+          State Counter: {count}
+        </button>
+
+        <button style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: '#059669', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }} onClick={testBackendApi} disabled={loading}>
+          {loading ? 'Pinging Backend...' : 'Test Backend API (/api/health)'}
+        </button>
+      </div>
+
+      {apiResponse && (
+        <div style={{ marginTop: '1.5rem', padding: '1rem', borderRadius: '8px', background: apiResponse.status === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: '1px solid ' + (apiResponse.status === 'success' ? '#10b981' : '#ef4444'), textAlign: 'left', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+          <div style={{ fontWeight: 'bold', color: apiResponse.status === 'success' ? '#34d399' : '#f87171', marginBottom: '0.35rem' }}>
+            {apiResponse.status === 'success' ? '[200 OK] Backend Microservice Connected!' : '[OFFLINE] Backend Server Offline (Run uvicorn or node backend server)'}
+          </div>
+          <pre style={{ margin: 0, color: '#e2e8f0' }}>{JSON.stringify(apiResponse.data || { error: apiResponse.error }, null, 2)}</pre>
+        </div>
+      )}
     </div>
   );
 }
@@ -344,10 +395,10 @@ async function maybePromptForVenv(pythonDir, context) {
     console.log(`[rapidfire] Creating Python virtual environment in ${pythonDir}...`);
     const res = createVirtualEnvironment(pythonDir);
     if (res.success) {
-      console.log(`\x1b[32m✔ Virtual environment created at ${res.venvPath}\x1b[0m`);
+      console.log(`\x1b[32m[OK] Virtual environment created at ${res.venvPath}\x1b[0m`);
       console.log(`  To activate: \x1b[36m${res.activateCmd}\x1b[0m`);
     } else {
-      console.log(`\x1b[33m⚠ Could not create virtual environment: ${res.error}\x1b[0m`);
+      console.log(`\x1b[33m[WARN] Could not create virtual environment: ${res.error}\x1b[0m`);
     }
   } else {
     console.log(`[rapidfire] Skipped venv creation.`);
@@ -382,9 +433,9 @@ async function maybePromptForGithubRepo(projectPath, targetFolder, context) {
     console.log(`[rapidfire] Creating remote GitHub repository '${targetFolder}'...`);
     const res = createRepo(projectPath, targetFolder, false);
     if (res.success) {
-      console.log(`\x1b[32m✔ Remote GitHub repository '${targetFolder}' created and linked to origin!\x1b[0m`);
+      console.log(`\x1b[32m[OK] Remote GitHub repository '${targetFolder}' created and linked to origin!\x1b[0m`);
     } else {
-      console.log(`\x1b[33m⚠ Could not create GitHub repository: ${res.message || res.error}\x1b[0m`);
+      console.log(`\x1b[33m[WARN] Could not create GitHub repository: ${res.message || res.error}\x1b[0m`);
     }
   } else {
     console.log(`[rapidfire] Skipped remote GitHub repository creation.`);
@@ -661,8 +712,10 @@ function reportSuccess(folderName, stack) {
   console.log(`\x1b[32m╚════════════════════════════════════════════════════╝\x1b[0m\n`);
 
   console.log(`Next steps:`);
-  console.log(`  \x1b[36mcd ${folderName}\x1b[0m (if navigating in your outer shell)`);
-  console.log(`  \x1b[35m• Save as preset anytime:\x1b[0m save preset <name> ${folderName}`);
+  console.log(`  \x1b[1m\x1b[32m• Run full-stack application now:\x1b[0m run ${folderName}`);
+  console.log(`  \x1b[36m• Inspect code & architecture:\x1b[0m    explain ${folderName}`);
+  console.log(`  \x1b[36m• Navigate into folder:\x1b[0m           cd ${folderName}`);
+  console.log(`  \x1b[35m• Save as preset anytime:\x1b[0m         save preset <name> ${folderName}`);
 
   if (isGhInstalled()) {
     if (isGhAuthenticated()) {

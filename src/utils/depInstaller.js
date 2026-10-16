@@ -153,9 +153,9 @@ async function promptAndInstallDependencies(depInfo, rl) {
   for (const pkg of selected) {
     const check = await validatePackageSecurity(pkg, ecosystem);
     if (!check.valid) {
-      console.log(`  ${red}✖ BLOCKED: ${pkg} - ${check.reason}${reset}`);
+      console.log(`  ${red}[BLOCKED]: ${pkg} - ${check.reason}${reset}`);
     } else {
-      console.log(`  ${green}✔ VERIFIED: ${pkg}${reset}`);
+      console.log(`  ${green}[OK] VERIFIED: ${pkg}${reset}`);
       validatedPkgs.push(pkg);
     }
   }
@@ -174,7 +174,7 @@ async function promptAndInstallDependencies(depInfo, rl) {
     const result = spawnSync(cmd, args, { stdio: 'inherit' });
 
     if (result.status === 0) {
-      console.log(`\n${green}✔ Successfully installed: ${validatedPkgs.join(', ')}${reset}\n`);
+      console.log(`\n${green}[OK] Successfully installed: ${validatedPkgs.join(', ')}${reset}\n`);
     } else {
       console.log(`\n${yellow}[rapidfire] Installer exited with status code ${result.status}.${reset}\n`);
     }

@@ -4,6 +4,8 @@ const RAPIDFIRE_COMMANDS = [
   'rapidfire-cli',
   'setup',
   'explain',
+  'overview',
+  'run',
   'ask',
   'suggest',
   'tell',

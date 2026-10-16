@@ -1,14 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 const { explainFile, explainDirectory } = require('../ai/gemini');
+const { findRepoRoot, recordExplanationEntry } = require('../utils/repoMemory');
+const { formatMarkdownForTerminal, renderTerminalBox } = require('./ask');
 
 async function handleExplain(args) {
-  const cyan = '\x1b[36m';
-  const green = '\x1b[32m';
-  const yellow = '\x1b[33m';
   const magenta = '\x1b[35m';
   const red = '\x1b[31m';
-  const bold = '\x1b[1m';
   const reset = '\x1b[0m';
   const dim = '\x1b[2m';
 
@@ -40,16 +38,45 @@ async function handleExplain(args) {
     return result;
   }
 
-  console.log(result.text);
-
-  if (result.isFallback) {
-    console.log(`\n${dim}[rapidfire-ai] Generated via deterministic static inspection.${reset}`);
-    console.log(`${dim}Save your AI API key ("key <token>") for deep AI architectural reasoning.${reset}\n`);
-  } else {
-    console.log(`\n${dim}[rapidfire-ai] Analyzed via ${result.model || 'AI'}.${reset}\n`);
+  const mdDir = path.join(process.cwd(), 'md');
+  if (!fs.existsSync(mdDir)) {
+    fs.mkdirSync(mdDir, { recursive: true });
   }
 
-  return result;
+  const mdFile = path.join(mdDir, 'explanation.md');
+  const mdAltFile = path.join(mdDir, 'explaination.md');
+
+  const repoRoot = findRepoRoot(process.cwd());
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const rawBase = (displayTarget === '.' || !displayTarget)
+    ? path.basename(repoRoot)
+    : path.basename(displayTarget).replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const targetMdFileName = `${rawBase || 'target'}_explain_${dateStr}.md`;
+  const targetMdPath = path.join(mdDir, targetMdFileName);
+
+  fs.writeFileSync(targetMdPath, result.text, 'utf8');
+  fs.writeFileSync(mdFile, result.text, 'utf8');
+  fs.writeFileSync(mdAltFile, result.text, 'utf8');
+
+  recordExplanationEntry(repoRoot, displayTarget, result.text.slice(0, 300), `md/${targetMdFileName}`);
+
+  console.log('\n' + renderTerminalBox('RapidFire Architecture', formatMarkdownForTerminal(result.text.trim())));
+
+  console.log(`\n\x1b[32m[OK] Documentation generated and saved to: md/${targetMdFileName}\x1b[0m`);
+
+  if (result.isFallback) {
+    console.log(`${dim}[rapidfire-ai] Generated via deterministic static inspection.${reset}`);
+    console.log(`${dim}Save your AI API key ("key <token>") for deep AI architectural reasoning.${reset}\n`);
+  } else {
+    console.log(`${dim}[rapidfire-ai] Analyzed via ${result.model || 'AI'}.${reset}\n`);
+  }
+
+  return {
+    ...result,
+    mdPath: targetMdPath,
+    mdFileName: targetMdFileName
+  };
 }
 
 module.exports = {

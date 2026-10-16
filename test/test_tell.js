@@ -49,6 +49,29 @@ async function runTests() {
     assert(cancelRes && cancelRes.cancelled, 'handleTell should report cancelled when user answers N');
     assert(!fse.existsSync(path.join(scratchDir, 'm1.cpp')), 'm1.cpp must NOT exist when cancelled');
     console.log('  ✔ handleTell respects user N cancellation without modifying filesystem');
+
+    // Test Archive Handling
+    const { isArchiveRequest } = require('../src/commands/tell');
+    assert.strictEqual(isArchiveRequest('create a zip for this folder'), true, 'Should detect create zip');
+    assert.strictEqual(isArchiveRequest('zip this folder'), true, 'Should detect zip this folder');
+    assert.strictEqual(isArchiveRequest('compress this directory'), true, 'Should detect compress this directory');
+    assert.strictEqual(isArchiveRequest('create 2 cpp files'), false, 'Should not detect cpp files as archive');
+    console.log('  ✔ isArchiveRequest accurately detects zip/archive operations');
+
+    fse.writeFileSync(path.join(scratchDir, 'dummy.txt'), 'test data');
+    const zipRes = await handleTell(['create', 'a', 'zip', 'for', 'this', 'folder'], {
+      ask: async () => 'Y'
+    });
+    assert(zipRes && zipRes.success, 'Archive creation should succeed on Y');
+    assert(fse.existsSync(path.join(scratchDir, 'scratch_tell_test.zip')), 'Zip archive must exist on disk');
+    console.log('  ✔ handleTell creates clean zip archive on user Y confirmation');
+
+    const zipCancel = await handleTell(['create', 'a', 'zip', 'for', 'this', 'folder'], {
+      ask: async () => 'N'
+    });
+    assert(zipCancel && zipCancel.cancelled, 'Archive creation should cancel on N');
+    console.log('  ✔ handleTell cancels archive creation on user N confirmation');
+
   } finally {
     process.chdir(origCwd);
     fse.removeSync(scratchDir);
