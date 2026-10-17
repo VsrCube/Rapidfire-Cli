@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { runCapture } = require('./proc');
 
 const DEFAULT_MEMORY_SCHEMA = {
@@ -14,9 +15,10 @@ const DEFAULT_MEMORY_SCHEMA = {
 };
 
 function findRepoRoot(startDir = process.cwd()) {
+  const home = path.resolve(os.homedir());
   try {
     const gitRoot = runCapture('git rev-parse --show-toplevel', { cwd: startDir }).trim();
-    if (gitRoot && fs.existsSync(gitRoot)) {
+    if (gitRoot && fs.existsSync(gitRoot) && path.resolve(gitRoot) !== home) {
       return path.resolve(gitRoot);
     }
   } catch {}
@@ -24,7 +26,7 @@ function findRepoRoot(startDir = process.cwd()) {
   let current = path.resolve(startDir);
   const root = path.parse(current).root;
 
-  while (current && current !== root) {
+  while (current && current !== root && current !== home) {
     if (
       fs.existsSync(path.join(current, '.git')) ||
       fs.existsSync(path.join(current, 'package.json')) ||

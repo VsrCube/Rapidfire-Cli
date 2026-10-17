@@ -38,7 +38,8 @@ async function handleExplain(args) {
     return result;
   }
 
-  const mdDir = path.join(process.cwd(), 'md');
+  const targetDir = isDir ? targetPath : path.dirname(targetPath);
+  const mdDir = path.join(targetDir, 'md');
   if (!fs.existsSync(mdDir)) {
     fs.mkdirSync(mdDir, { recursive: true });
   }
@@ -46,7 +47,7 @@ async function handleExplain(args) {
   const mdFile = path.join(mdDir, 'explanation.md');
   const mdAltFile = path.join(mdDir, 'explaination.md');
 
-  const repoRoot = findRepoRoot(process.cwd());
+  const repoRoot = findRepoRoot(targetDir);
   const now = new Date();
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const rawBase = (displayTarget === '.' || !displayTarget)
@@ -63,11 +64,16 @@ async function handleExplain(args) {
 
   console.log('\n' + renderTerminalBox('RapidFire Architecture', formatMarkdownForTerminal(result.text.trim())));
 
-  console.log(`\n\x1b[32m[OK] Documentation generated and saved to: md/${targetMdFileName}\x1b[0m`);
+  const relSaved = path.relative(process.cwd(), targetMdPath) || path.basename(targetMdPath);
+  console.log(`\n\x1b[32m[OK] Documentation generated and saved to: ${relSaved}\x1b[0m`);
 
   if (result.isFallback) {
-    console.log(`${dim}[rapidfire-ai] Generated via deterministic static inspection.${reset}`);
-    console.log(`${dim}Save your AI API key ("key <token>") for deep AI architectural reasoning.${reset}\n`);
+    if (result.isEmpty) {
+      console.log(`${dim}[rapidfire-ai] Empty target detected. Deterministic empty profile generated.${reset}\n`);
+    } else {
+      console.log(`${dim}[rapidfire-ai] Generated via deterministic static inspection.${reset}`);
+      console.log(`${dim}Save your AI API key ("key <token>") for deep AI architectural reasoning.${reset}\n`);
+    }
   } else {
     console.log(`${dim}[rapidfire-ai] Analyzed via ${result.model || 'AI'}.${reset}\n`);
   }

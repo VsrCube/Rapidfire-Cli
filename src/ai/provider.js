@@ -707,6 +707,15 @@ function fallbackExplainFile(filePath) {
     };
   }
 
+  if (rawContent.trim().length === 0) {
+    return {
+      success: true,
+      isFallback: true,
+      isEmpty: true,
+      text: `## 1. Overview & Primary Role\n${baseName} is an empty file (0 bytes).\n\n## 2. Key Components & Functions\nNone defined.\n\n## 3. Dependencies & Connections\nNo imports or module dependencies.\n\n## 4. Notable Architecture / Logic\nEmpty source file awaiting implementation.\n`
+    };
+  }
+
   const lines = rawContent.split(/\r?\n/);
   const lineCount = lines.length;
   const sizeKb = (stat.size / 1024).toFixed(1);
@@ -847,6 +856,26 @@ function fallbackExplainDirectory(dirPath) {
   const resolved = path.resolve(dirPath);
   const baseName = path.basename(resolved);
   const items = scanDirectoryTree(resolved, 2);
+  const hasCodeOrConfig = items.some(i => i.name !== 'md' && !i.path.includes('/md/') && !i.name.endsWith('.md'));
+
+  if (!hasCodeOrConfig) {
+    let emptyText = `======================================================================\n`;
+    emptyText += `CODEBASE ARCHITECTURE: ${baseName}\n`;
+    emptyText += `======================================================================\n\n`;
+    emptyText += `Path: ${resolved}\n`;
+    emptyText += `Detected Stack: Empty Directory\n`;
+    emptyText += `Total Scanned Files/Directories: 0\n\n`;
+    emptyText += `PROJECT STRUCTURE:\n(empty directory - no files detected)\n\n`;
+    emptyText += `STATUS:\nThis directory contains no software assets or source code.\n`;
+    emptyText += `Use RapidFire's setup engine ("setup <recipe>") to initialize an application.\n`;
+
+    return {
+      success: true,
+      isFallback: true,
+      isEmpty: true,
+      text: emptyText
+    };
+  }
 
   const stacks = [];
   const pkgPath = path.join(resolved, 'package.json');
@@ -950,6 +979,10 @@ async function explainFile(filePath) {
     return fallbackExplainFile(filePath);
   }
 
+  if (!content.trim()) {
+    return fallbackExplainFile(filePath);
+  }
+
   const lines = content.split(/\r?\n/);
   const snippet = lines.slice(0, 300).join('\n');
   const isTruncated = lines.length > 300;
@@ -1014,14 +1047,19 @@ async function explainDirectory(dirPath) {
     return explainFile(dirPath);
   }
 
+  const resolved = path.resolve(dirPath);
+  const baseName = path.basename(resolved);
+  const items = scanDirectoryTree(resolved, 2);
+  const hasCodeOrConfig = items.some(i => i.name !== 'md' && !i.path.includes('/md/') && !i.name.endsWith('.md'));
+
+  if (!hasCodeOrConfig) {
+    return fallbackExplainDirectory(dirPath);
+  }
+
   const config = getActiveAiConfig();
   if (!config.apiKey) {
     return fallbackExplainDirectory(dirPath);
   }
-
-  const resolved = path.resolve(dirPath);
-  const baseName = path.basename(resolved);
-  const items = scanDirectoryTree(resolved, 2);
 
   let treeStr = '';
   for (const item of items.slice(0, 40)) {
@@ -1163,6 +1201,51 @@ function fallbackRepoOverview(repoPath, options = {}) {
   }
 
   const title = isCritic ? `# Architectural Critique: ${pkgName}` : `# Repository Overview: ${pkgName} (v${pkgVersion})`;
+  const hasCodeOrConfig = items.some(i => i.name !== 'md' && !i.path.includes('/md/') && !i.name.endsWith('.md'));
+
+  if (!hasCodeOrConfig) {
+    let emptyText = `${title}\n\n`;
+    emptyText += `Target: ${resolved}\n`;
+    emptyText += `Total Tracked Modules/Files: 0\n\n`;
+    emptyText += `## 1. Agenda / Goal\n`;
+    emptyText += `This directory is currently empty. No source code, project manifests, or architectural modules have been created yet.\n\n`;
+    emptyText += `## 2. Use Case\n`;
+    emptyText += `• Uninitialized development workspace awaiting new application scaffolding or existing code import.\n\n`;
+    emptyText += `## 3. Key Features\n`;
+    emptyText += `• Blank Workspace: Clean initialization target ready for RapidFire framework recipes.\n`;
+    emptyText += `• 1-Command Scaffolding: Run "setup <stack>" to generate full-stack, frontend, or backend architectures.\n\n`;
+    emptyText += `## 4. Folder Architecture\n`;
+    emptyText += `\`\`\`\n${repoName}/\n└── (empty)\n\`\`\`\n\n`;
+    emptyText += `## 5. Data Pipeline Flowchart\n`;
+    emptyText += `\`\`\`\n[ Empty Directory ] ──> Run "setup <stack>" ──> Application Generated\n\`\`\`\n\n`;
+    emptyText += `## 6. File Overview / Directory Overview\n`;
+    emptyText += `• No files or subdirectories currently exist in ${repoName}/.\n\n`;
+    emptyText += `## 7. Working Flowchart\n`;
+    emptyText += `\`\`\`\n[ Empty Directory ] ──> Awaiting code, git clone, or setup recipe\n\`\`\`\n\n`;
+    emptyText += `## 8. Technology Used\n`;
+    emptyText += `• None detected (empty directory).\n\n`;
+    emptyText += `## 9. Conclusion\n`;
+    emptyText += `The directory contains no software assets. Use RapidFire's setup engine to generate a production scaffold.\n\n`;
+    emptyText += `## 10. Things to Work On / Fixes\n`;
+    emptyText += `1. Scaffold an application stack using "setup <recipe>" (e.g. "setup react+fastapi", "setup next", "setup express").\n`;
+    emptyText += `2. Or import/clone your project files into this directory.\n`;
+
+    if (isCritic) {
+      emptyText += `\n## 11. Pros\n`;
+      emptyText += `• Clean Slate: Zero technical debt and zero obsolete dependencies.\n\n`;
+      emptyText += `## 12. Cons\n`;
+      emptyText += `• Inactive Workspace: No application files to build, test, or execute.\n\n`;
+      emptyText += `## 13. Flaws\n`;
+      emptyText += `• Empty Workspace: Missing project files and lifecycle manifests. Initialize with "setup <recipe>".\n`;
+    }
+
+    return {
+      success: true,
+      isFallback: true,
+      isEmpty: true,
+      text: emptyText
+    };
+  }
 
   let text = `${title}\n\n`;
   text += `Target: ${resolved}\n`;
@@ -1464,6 +1547,12 @@ async function generateRepoOverview(repoPath, options = {}) {
   }
 
   const isCritic = Boolean(options && (options.critic || options.cirtic));
+  const items = scanDirectoryTree(resolved, 2);
+  const hasCodeOrConfig = items.some(i => i.name !== 'md' && !i.path.includes('/md/') && !i.name.endsWith('.md'));
+  if (!hasCodeOrConfig) {
+    return fallbackRepoOverview(resolved, options);
+  }
+
   const config = getActiveAiConfig();
   if (!config.apiKey) {
     return fallbackRepoOverview(resolved, options);
