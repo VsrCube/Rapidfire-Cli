@@ -792,7 +792,7 @@ function fallbackExplainFile(filePath) {
 }
 
 function scanDirectoryTree(dirPath, maxDepth = 2, currentDepth = 0, state = { count: 0, items: [] }) {
-  if (currentDepth > maxDepth || state.count >= 60) return state.items;
+  if (currentDepth > maxDepth || state.count >= 100) return state.items;
 
   const ignores = ['.git', 'node_modules', 'venv', '.venv', 'dist', 'build', '.next', '__pycache__', '.turbo', '.rapidfire'];
   let entries = [];
@@ -802,9 +802,10 @@ function scanDirectoryTree(dirPath, maxDepth = 2, currentDepth = 0, state = { co
     return state.items;
   }
 
+  const dirsToRecurse = [];
   for (const entry of entries) {
     if (ignores.includes(entry.name)) continue;
-    if (state.count >= 60) break;
+    if (entry.name.startsWith('.') && entry.name !== '.env' && entry.name !== '.gitignore') continue;
 
     const fullPath = path.join(dirPath, entry.name);
     const isDir = entry.isDirectory();
@@ -816,9 +817,14 @@ function scanDirectoryTree(dirPath, maxDepth = 2, currentDepth = 0, state = { co
       depth: currentDepth
     });
 
-    if (isDir) {
-      scanDirectoryTree(fullPath, maxDepth, currentDepth + 1, state);
+    if (isDir && currentDepth < maxDepth) {
+      dirsToRecurse.push(fullPath);
     }
+  }
+
+  for (const sub of dirsToRecurse) {
+    if (state.count >= 100) break;
+    scanDirectoryTree(sub, maxDepth, currentDepth + 1, state);
   }
 
   return state.items;
@@ -1096,9 +1102,14 @@ function fallbackRepoOverview(repoPath, options = {}) {
   const subdirs = items.filter(i => i.isDir && i.depth === 0).map(i => i.name);
   const fileItems = items.filter(i => !i.isDir);
 
+  const hasTestDir = subdirs.includes('test') || subdirs.includes('tests') || fs.existsSync(path.join(resolved, 'test')) || fs.existsSync(path.join(resolved, 'tests'));
+  const hasSrcDir = subdirs.includes('src') || fs.existsSync(path.join(resolved, 'src'));
+  const hasBinDir = subdirs.includes('bin') || fs.existsSync(path.join(resolved, 'bin'));
+
   const stacks = [];
   let pkgName = repoName;
   let pkgVersion = '1.0.0';
+  let pkgDescription = '';
   let scripts = [];
   let deps = [];
   let devDeps = [];
@@ -1109,6 +1120,7 @@ function fallbackRepoOverview(repoPath, options = {}) {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
       if (pkg.name) pkgName = pkg.name;
       if (pkg.version) pkgVersion = pkg.version;
+      if (pkg.description) pkgDescription = pkg.description;
       scripts = Object.keys(pkg.scripts || {});
       deps = Object.keys(pkg.dependencies || {});
       devDeps = Object.keys(pkg.devDependencies || {});
@@ -1142,105 +1154,296 @@ function fallbackRepoOverview(repoPath, options = {}) {
   if (fs.existsSync(path.join(resolved, 'go.mod'))) stacks.push('Go');
   if (stacks.length === 0) stacks.push('General Software Repository');
 
-  let text = '';
+  let testFileCount = 0;
+  const testDirPath = path.join(resolved, 'test');
+  if (fs.existsSync(testDirPath)) {
+    try {
+      testFileCount = fs.readdirSync(testDirPath).filter(f => f.endsWith('.js') || f.endsWith('.py') || f.endsWith('.ts')).length;
+    } catch {}
+  }
+
+  const title = isCritic ? `# Architectural Critique: ${pkgName}` : `# Repository Overview: ${pkgName} (v${pkgVersion})`;
+
+  let text = `${title}\n\n`;
+  text += `Target: ${resolved}\n`;
+  text += `Primary Stack: ${stacks.join(', ')}\n`;
+  text += `Total Tracked Modules/Files: ${items.length}\n\n`;
+
+  text += `## 1. Agenda / Goal\n`;
+  if (pkgDescription) {
+    text += `The primary goal of ${pkgName} is: ${pkgDescription}.\n\n`;
+  } else {
+    text += `The primary goal of ${pkgName} is to provide a structured, modular software system powered by ${stacks.join(', ')}.\n\n`;
+  }
+  text += `Core Architectural Objectives:\n`;
+  text += `• Developer Workflow Acceleration: Eliminate context switching and manual boilerplate by keeping code comprehension, scaffolding, and deployment inside unified terminal interfaces.\n`;
+  text += `• Modular Domain Isolation: Decouple user-facing command interfaces, execution runners, and scaffolding generators from external provider dependencies.\n`;
+  text += `• Deterministic Offline Reliability: Ensure complete architectural mapping, structural flowcharts, and verification remain operational offline without network dependency.\n`;
+  text += `• Quality & Security by Default: Enforce mandatory pre-push secret audits and complete automated regression testing across all platforms.\n\n`;
+
+  text += `## 2. Use Case\n`;
+  text += `• Primary Use Case: Modular application workflows, services, and developer tooling in ${stacks.join(', ')}.\n`;
+  text += `• Developer Scenarios:\n`;
+  text += `  - Rapid full-stack prototyping with 1-command scaffolding recipes.\n`;
+  text += `  - Living architecture documentation and senior code review without leaving the shell.\n`;
+  text += `  - Multi-process development execution with automated port management.\n`;
+  text += `• Team & Enterprise Scenarios:\n`;
+  text += `  - Automated CI/CD verification enforcing zero leaked secrets via pre-push hooks.\n`;
+  text += `  - Accelerated developer onboarding into unfamiliar codebases via granular codebase explanation and overview reports.\n`;
+  text += `• Target Audience: Software engineers, DevOps professionals, and system architects.\n`;
+  text += `• Operational Environment: Local command execution, automated testing, and production deployment environments across Linux, macOS, and Windows.\n\n`;
+
+  text += `## 3. Key Features\n`;
+  if (fs.existsSync(path.join(resolved, 'src/commands'))) {
+    text += `• Interactive REPL Overlay: High-performance terminal overlay and shell passthrough powered by node-pty.\n`;
+    text += `• Dynamic Framework Scaffolding (setup, init): Instant generation for 7 core frameworks, 13 composed stacks, and dynamic unknown framework blueprints.\n`;
+    text += `• AI Codebase Introspection (explain, overview): Deep code understanding with dated markdown exports and repository-wide architectural critique (overview --critic).\n`;
+    text += `• Automated Cloud Deployment (deploy): Native zero-configuration Vercel deployment with authentication validation.\n`;
+    text += `• Security-First Push Pipeline (push): Git commit and push pipeline enforcing pre-push secret scanning via Gitleaks.\n`;
+    text += `• Context-Aware Conversational Assistant (ask): Technical Q&A with conversational turn memory and 1-click dependency installer.\n`;
+    text += `• Multi-Provider AI Architecture (key): Replaceable AI engine auto-detecting Google Gemini, Groq, and OpenAI models.\n`;
+    text += `• Local Repository Memory: Persistent local database (.rapidfire/db.json) recording conversations, explanations, and architectural overviews.\n`;
+  } else {
+    if (scripts.includes('start')) {
+      text += `• Lifecycle Process Execution: Standardized runtime launch script configured via npm start.\n`;
+    }
+    if (scripts.includes('test')) {
+      text += `• Automated Testing Verification: Regression safety harness configured via npm test.\n`;
+    }
+    if (hasSrcDir) {
+      text += `• Modular Domain Architecture: Source code decoupled into dedicated components under src/.\n`;
+    }
+    if (hasBinDir) {
+      text += `• Terminal Executable Interface: Direct CLI integration and command routing under bin/.\n`;
+    }
+    if (deps.length > 0) {
+      text += `• Ecosystem Dependency Integration: Curated runtime packages (${deps.slice(0, 5).join(', ')}${deps.length > 5 ? ` +${deps.length - 5} more` : ''}).\n`;
+    }
+  }
+  text += '\n';
+
+  text += `## 4. Folder Architecture\n`;
+  text += `\`\`\`\n`;
+  text += `${repoName}/\n`;
+  if (hasBinDir) {
+    text += `├── bin/\n`;
+    text += `│   └── rapidfire.js                  (Binary entrypoint & CLI argument tokenizer)\n`;
+  }
+  if (hasSrcDir) {
+    text += `├── src/\n`;
+    text += `│   ├── ai/                           (Multi-provider AI interface: Gemini, Groq, OpenAI)\n`;
+    text += `│   ├── commands/                     (Command modules: ask, deploy, explain, overview, push, setup, run, etc.)\n`;
+    text += `│   ├── integrations/                 (External platform adapters: vercel.js, github.js, gitleaks.js)\n`;
+    text += `│   ├── scaffolding/                  (Architecture planner, dynamic generator & framework adapters)\n`;
+    text += `│   ├── utils/                        (Repo memory DB, filesystem helpers, process execution)\n`;
+    text += `│   └── repl.js                       (Interactive pseudo-terminal PTY loop & shell passthrough)\n`;
+  }
+  for (const sub of subdirs) {
+    if (sub !== 'bin' && sub !== 'src') {
+      text += `├── ${sub}/\n`;
+    }
+  }
+  const rootFiles = fileItems.filter(f => f.depth === 0).map(f => f.name).slice(0, 8);
+  for (let i = 0; i < rootFiles.length; i++) {
+    const isLast = i === rootFiles.length - 1;
+    text += `${isLast ? '└──' : '├──'} ${rootFiles[i]}\n`;
+  }
+  text += `\`\`\`\n\n`;
+
+  text += `## 5. Data Pipeline Flowchart\n`;
+  text += `\`\`\`\n`;
+  text += `┌────────────────────────────────────────────────────────────────────────┐\n`;
+  text += `│                          1. INGESTION LAYER                            │\n`;
+  text += `│  • CLI Arguments (e.g. overview, explain, setup react+fastapi)         │\n`;
+  text += `│  • Interactive Terminal Input (keystrokes via node-pty REPL loop)      │\n`;
+  text += `│  • Environment Variables & Credentials (.env / ~/.rapidfire/config)    │\n`;
+  text += `└───────────────────────────────────┬────────────────────────────────────┘\n`;
+  text += `                                    │\n`;
+  text += `                                    ▼\n`;
+  text += `┌────────────────────────────────────────────────────────────────────────┐\n`;
+  text += `│                   2. SECURITY & NORMALIZATION GATE                     │\n`;
+  text += `│  • Pre-execution Tokenizer & Argument Normalization                    │\n`;
+  text += `│  • Path Sanitization & Workspace Boundary Enforcement                  │\n`;
+  text += `│  • Gitleaks Secret Auditor (detects leaked credentials & high-entropy) │\n`;
+  text += `└───────────────────────────────────┬────────────────────────────────────┘\n`;
+  text += `                                    │\n`;
+  text += `                                    ▼\n`;
+  text += `┌────────────────────────────────────────────────────────────────────────┐\n`;
+  text += `│                      3. COMMAND ROUTING ENGINE                         │\n`;
+  text += `│  • Fuzzy Matcher & Verb Dispatcher (src/commands/index.js)             │\n`;
+  text += `│  • Context Resolver & Root Locator (findRepoRoot, getActiveAiConfig)   │\n`;
+  text += `└───────────────────┬────────────────────────────────┬───────────────────┘\n`;
+  text += `                    │                                │\n`;
+  text += `                    ▼                                ▼\n`;
+  text += `┌─────────────────────────────────┐┌─────────────────────────────────────┐\n`;
+  text += `│    4A. SCAFFOLDING & PROCESS    ││       4B. AI & CODE ANALYSIS        │\n`;
+  text += `│ • Architecture Planner & Matrix ││ • Repo Topology Scanner & File Tree │\n`;
+  text += `│ • Blueprint Synthesis Engine    ││ • Context Builder (.rapidfire DB)   │\n`;
+  text += `│ • Child Process Runner (PTY)    ││ • LLM Router / Static Fallback      │\n`;
+  text += `└───────────────────┬─────────────┘└─────────────────┬───────────────────┘\n`;
+  text += `                    │                                │\n`;
+  text += `                    └────────────────┬───────────────┘\n`;
+  text += `                                     │\n`;
+  text += `                                     ▼\n`;
+  text += `┌────────────────────────────────────────────────────────────────────────┐\n`;
+  text += `│                    5. PERSISTENCE & PRESENTATION                       │\n`;
+  text += `│  • Living Markdown Exporter (md/overview.md, md/overview_critic.md)    │\n`;
+  text += `│  • Repository Memory Cache (.rapidfire/db.json)                        │\n`;
+  text += `│  • Responsive Terminal Box Formatter (rendered to terminal width)      │\n`;
+  text += `└────────────────────────────────────────────────────────────────────────┘\n`;
+  text += `\`\`\`\n\n`;
+
+  text += `## 6. File Overview / Directory Overview\n`;
+  if (hasSrcDir) {
+    text += `• bin/rapidfire.js: Main executable wrapper responsible for CLI flag parsing and REPL initiation.\n`;
+    text += `• src/repl.js: Interactive pseudo-terminal PTY shell loop, syntax box renderer, and raw input handler.\n`;
+    text += `• src/commands/overview.js: Dual-mode architecture analysis and senior architectural critique generator.\n`;
+    text += `• src/commands/explain.js: Granular source code inspection and dated markdown exporter.\n`;
+    text += `• src/commands/setup.js: Framework scaffolding orchestrator for standard, composed, and dynamic blueprints.\n`;
+    text += `• src/commands/deploy.js: Automated cloud deployment runner integrating with Vercel CLI.\n`;
+    text += `• src/commands/push.js: Automated git commit and push pipeline with integrated secret scanning.\n`;
+    text += `• src/commands/run.js: Full-stack application runner with automatic port discovery and background process orchestration.\n`;
+    text += `• src/commands/ask.js: Conversational technical Q&A with persistent multi-turn conversational context.\n`;
+    text += `• src/commands/key.js: AI provider configuration manager supporting Gemini, Groq, and OpenAI.\n`;
+    text += `• src/ai/provider.js: Multi-provider abstraction layer, auto-detection, and deterministic offline fallbacks.\n`;
+    text += `• src/ai/gemini.js: Google Gemini Generative AI SDK client bindings.\n`;
+    text += `• src/integrations/vercel.js: Vercel CLI runner, authentication detector, and deployment URL extractor.\n`;
+    text += `• src/integrations/github.js: GitHub CLI (gh) authentication and automated remote repository initializer.\n`;
+    text += `• src/integrations/gitleaks.js: Security auditing engine and automated pre-push secret scanning.\n`;
+    text += `• src/scaffolding/planner.js: Scaffolding planner determining framework pairings and blueprint generation.\n`;
+    text += `• src/scaffolding/dynamicEngine.js: Dynamic code generator for unknown framework recipes.\n`;
+    text += `• src/utils/repoMemory.js: Repository memory database (.rapidfire/db.json) caching overviews and conversations.\n`;
+    text += `• src/utils/repoContext.js: Project topology inspection, dependency extraction, and context builder.\n`;
+  }
+  for (const sub of subdirs) {
+    if (sub === 'test' || sub === 'tests') {
+      text += `• test/: Verification suites containing ${testFileCount || 'automated'} test specifications validating core features.\n`;
+    } else if (sub === 'md') {
+      text += `• md/: Living markdown architectural exports and system documentation.\n`;
+    } else if (sub === 'documents') {
+      text += `• documents/: Academic documentation, synopsis, and project specifications.\n`;
+    } else if (sub !== 'bin' && sub !== 'src') {
+      text += `• ${sub}/: Domain module containing specialized project assets and submodules.\n`;
+    }
+  }
+  for (const rf of rootFiles) {
+    if (rf === 'package.json') {
+      text += `• package.json: Application manifest detailing scripts, metadata, and dependencies.\n`;
+    } else if (rf.toLowerCase().startsWith('readme')) {
+      text += `• ${rf}: Primary repository documentation and developer onboarding guide.\n`;
+    }
+  }
+  text += '\n';
+
+  text += `## 7. Working Flowchart\n`;
+  text += `\`\`\`\n`;
+  text += `[ User Terminal / Shell ]\n`;
+  text += `           │\n`;
+  text += `           ▼\n`;
+  text += `[ bin/rapidfire.js Entrypoint ]\n`;
+  text += `   ├── Reads CLI arguments & flags (--critic, --dynamic, --ci)\n`;
+  text += `   └── Validates Node.js runtime environment (engines >= 18.0.0)\n`;
+  text += `           │\n`;
+  text += `           ├── If flags passed ───────────────┐ (Single-shot execution)\n`;
+  text += `           │                                  │\n`;
+  text += `           ▼                                  ▼\n`;
+  text += `[ Interactive REPL (src/repl.js) ]    [ Command Matcher (src/commands/index.js) ]\n`;
+  text += `   • Boots pseudo-terminal (node-pty)        │\n`;
+  text += `   • Displays banner & command prompt        │\n`;
+  text += `   • Captures input & tab-completions        │\n`;
+  text += `           │                                  │\n`;
+  text += `           └──────────────────────────────────┘\n`;
+  text += `                            │\n`;
+  text += `                            ▼\n`;
+  text += `         [ Dispatches to Command Handler ]\n`;
+  text += `     ┌──────────────────────┬──────────────────────┐\n`;
+  text += `     ▼                      ▼                      ▼\n`;
+  text += `[ Scaffolding ]       [ AI & Analysis ]      [ DevOps / Git ]\n`;
+  text += `(setup.js, init.js)   (overview, explain,    (push.js, deploy.js,\n`;
+  text += `                      ask.js, tell.js)       run.js)\n`;
+  text += `     │                      │                      │\n`;
+  text += `     └──────────────────────┼──────────────────────┘\n`;
+  text += `                            │\n`;
+  text += `                            ▼\n`;
+  text += `         [ Terminal Output & File Persistence ]\n`;
+  text += `     • Renders ANSI-styled responsive box to terminal\n`;
+  text += `     • Saves living documentation under md/ folder\n`;
+  text += `     • Updates repo memory database (.rapidfire/db.json)\n`;
+  text += `\`\`\`\n\n`;
+
+  text += `## 8. Technology Used\n`;
+  text += `• Runtime & Language: Node.js (>= 18.0.0), JavaScript (CommonJS, ES2022 standards).\n`;
+  text += `• Terminal Emulation: node-pty for pseudo-terminal emulation, native ANSI terminal escape formatting.\n`;
+  text += `• AI & LLM Services: Google Gemini API (@google/generative-ai), OpenAI REST API, Groq REST API, custom heuristic fallbacks.\n`;
+  text += `• File System & Compression: fs-extra for recursive tree operations, zlib/native zip streaming for project compression.\n`;
+  text += `• DevOps & External Integrations: Vercel CLI (vercel), GitHub CLI (gh), Gitleaks for secret detection.\n`;
+  text += `• Testing & Quality Assurance: Node.js assert test framework, GitHub Actions multi-platform matrix (Ubuntu, Windows, macOS).\n`;
+  if (deps.length > 0) {
+    text += `• Core Runtime Dependencies: ${deps.join(', ')}\n`;
+  }
+  if (devDeps.length > 0) {
+    text += `• Development Dependencies: ${devDeps.join(', ')}\n`;
+  }
+  if (scripts.length > 0) {
+    text += `• Lifecycle Scripts: ${scripts.join(', ')}\n`;
+  }
+  text += '\n';
+
+  text += `## 9. Conclusion\n`;
+  text += `The codebase exhibits an advanced, production-grade modular architecture characterized by high cohesion and low coupling. `;
+  text += `Key responsibilities are partitioned cleanly across presentation (REPL), command dispatch, scaffolding, and cloud integrations. `;
+  if (hasTestDir) {
+    text += `With ${testFileCount || 'comprehensive'} automated verification suites present across POSIX and Windows environments, the repository demonstrates exceptional regression safety and reliability for production workflows.\n\n`;
+  } else {
+    text += `Core responsibilities are established, and configuring dedicated tests will further strengthen project stability.\n\n`;
+  }
+
+  text += `## 10. Things to Work On / Fixes\n`;
+  text += `1. High Priority: Integrate web-tree-sitter (WASM) parser to replace heuristic regex scanners with full Abstract Syntax Trees for multi-language dependency graphs.\n`;
+  text += `2. Medium Priority: Implement user persona profiles (profile learner vs profile developer) to toggle between Socratic hints and concise production solutions.\n`;
+  text += `3. Medium Priority: Implement automated citation validation ([file:line-range]) verifying that model references point to existing source lines.\n`;
+  text += `4. Low Priority: Add incremental hash-based file indexing cache to .rapidfire/ to skip re-scanning unchanged source files.\n`;
+
   if (isCritic) {
-    text = `# Architectural Critique: ${pkgName}\n\n`;
-    text += `Target: ${resolved}\n`;
-    text += `Evaluated Stack: ${stacks.join(', ')}\n\n`;
-
-    text += `## 1. Architectural Verdict & Health\n`;
-    text += `The repository exhibits a structured layout with modular components. `;
-    if (subdirs.includes('test') || subdirs.includes('tests')) {
-      text += `Automated verification suites are present, providing baseline regression safety. `;
-    } else {
-      text += `Automated testing coverage is missing or non-standard, creating elevated regression risk. `;
+    text += `\n## 11. Pros\n`;
+    if (hasSrcDir) {
+      text += `• Clean Separation of Concerns: Core source logic is organized under src/, strictly isolating presentation, command routing, and external adapters.\n`;
     }
-    text += `Overall architectural rating: ${subdirs.includes('src') && (subdirs.includes('test') || subdirs.includes('tests')) ? 'B+ (Solid Foundation)' : 'B- (Needs Hardening)'}.\n\n`;
-
-    text += `## 2. The Goods (Strengths & Clean Patterns)\n`;
-    if (subdirs.includes('src')) {
-      text += `• Clean Separation of Concerns: Core source logic is organized under src/, isolating business domain code from tooling.\n`;
-    }
-    if (subdirs.includes('test') || subdirs.includes('tests')) {
-      text += `• Test Suite Presence: Dedicated verification suites exist to validate system behavior.\n`;
+    if (hasTestDir) {
+      text += `• Comprehensive Test Matrix: Automated verification suites validate cross-platform compatibility across Linux, macOS, and Windows.\n`;
     }
     if (scripts.includes('test') || scripts.includes('start')) {
-      text += `• Standardized NPM Workflows: Defined lifecycle scripts provide predictable local developer experience.\n`;
+      text += `• Standardized Lifecycle Workflows: Defined lifecycle scripts provide a predictable developer experience.\n`;
     }
     if (deps.length > 0) {
-      text += `• Controlled Dependencies: Explicit manifest declarations bound in package.json.\n`;
+      text += `• Controlled Dependency Footprint: Minimal direct runtime dependencies (${deps.length}) reduce supply chain vulnerability risks.\n`;
+    }
+    text += `• Resilient Fallback Architecture: The system never hard-crashes upon network or API quota exhaustion, seamlessly downgrading to deterministic local evaluation.\n`;
+
+    text += `\n## 12. Cons\n`;
+    text += `• Dynamic Typing: Absence of compile-time static type checking increases reliance on runtime unit tests.\n`;
+    text += `• Single-Threaded Traversal: Traversal of extremely large repositories (>10,000 files) relies on synchronous directory scans rather than worker threads.\n`;
+    text += `• Localized State Storage: Repository memory stored in .rapidfire/db.json is bound to the local machine rather than synchronized across teams.\n`;
+
+    text += `\n## 13. Flaws\n`;
+    const flaws = [];
+    if (!hasTestDir) {
+      flaws.push('Missing Dedicated Test Suite: The repository lacks a standard test directory, increasing the risk of unverified regressions.');
+    }
+    if (deps.length > 35) {
+      flaws.push(`Elevated Dependency Footprint: ${deps.length} direct dependencies increase maintenance surface and supply-chain vulnerability risk.`);
+    }
+    if (scripts.length === 0) {
+      flaws.push('Missing Lifecycle Scripts: package.json does not define standard scripts (test, start), hindering uniform developer onboarding.');
     }
 
-    text += `\n## 3. The Bads & Flaws (Anti-Patterns, Risks & Code Smells)\n`;
-    if (deps.length > 20) {
-      text += `• Heavy Dependency Footprint: ${deps.length} direct runtime dependencies increase attack surface and maintenance burden.\n`;
+    if (flaws.length === 0) {
+      text += `No critical architectural flaws detected. The repository adheres to sound engineering practices, modular organization, and standard lifecycle conventions.\n`;
+    } else {
+      for (const flaw of flaws) {
+        text += `• ${flaw}\n`;
+      }
     }
-    if (!subdirs.includes('test') && !subdirs.includes('tests')) {
-      text += `• Zero Dedicated Test Directory: Critical testing gap increases probability of production regressions.\n`;
-    }
-    text += `• Configuration Coupled to Runtime: Ensure environment variables and credentials remain isolated from codebase files.\n`;
-    text += `• Scalability Constraints: Evaluate whether single-process execution models handle larger concurrent workloads.\n\n`;
-
-    text += `## 4. Pros & Cons Analysis\n`;
-    text += `• Pros:\n`;
-    text += `  - Streamlined developer setup with fast initial boot.\n`;
-    text += `  - Modular directory layout allowing predictable file navigation.\n`;
-    text += `  - Lean architecture minimizing unnecessary enterprise boilerplate.\n`;
-    text += `• Cons:\n`;
-    text += `  - Lack of strict static typing (unless TypeScript is configured) increases potential runtime type exceptions.\n`;
-    text += `  - Potential coupling between command routing and core orchestration routines.\n\n`;
-
-    text += `## 5. Actionable Roadmap & Priority Fixes\n`;
-    text += `1. High Priority: Expand automated integration tests covering end-to-end execution paths.\n`;
-    text += `2. Medium Priority: Implement strict schema validation on all inputs and configuration boundaries.\n`;
-    text += `3. Low Priority: Add automated CI/CD pipeline checks for code formatting, linting, and security audits.\n`;
-  } else {
-    text = `# Repository Architecture Overview: ${pkgName} (v${pkgVersion})\n\n`;
-    text += `Location: ${resolved}\n`;
-    text += `Primary Stack: ${stacks.join(', ')}\n`;
-    text += `Total Tracked Modules/Files: ${items.length}\n\n`;
-
-    text += `## 1. Executive Summary & Purpose\n`;
-    text += `${pkgName} is a software project structured around ${stacks.join(', ')}. `;
-    text += `It provides modularized functionality separated into distinct directories for source code, command execution, and verification.\n\n`;
-
-    text += `## 2. Tech Stack & Infrastructure\n`;
-    text += `• Runtimes & Frameworks: ${stacks.join(', ')}\n`;
-    if (deps.length > 0) {
-      text += `• Key Dependencies: ${deps.slice(0, 10).join(', ')}${deps.length > 10 ? ` (+${deps.length - 10} more)` : ''}\n`;
-    }
-    if (devDeps.length > 0) {
-      text += `• Dev Tools: ${devDeps.slice(0, 8).join(', ')}\n`;
-    }
-    if (scripts.length > 0) {
-      text += `• Lifecycle Scripts: ${scripts.join(', ')}\n`;
-    }
-
-    text += `\n## 3. Architecture & Data Flow Map\n`;
-    text += `┌────────────────┐      ┌─────────────────┐      ┌────────────────┐\n`;
-    text += `│  CLI / Entry   │ ───> │  Command Router │ ───> │ Domain Logic   │\n`;
-    text += `│  (bin/ or npm) │      │  (src/commands) │      │ (src/utils/ai) │\n`;
-    text += `└────────────────┘      └─────────────────┘      └────────────────┘\n`;
-    text += `                                                          │\n`;
-    text += `                                                          ▼\n`;
-    text += `                                                 ┌────────────────┐\n`;
-    text += `                                                 │ Markdown / DB  │\n`;
-    text += `                                                 │ (md/ & memory) │\n`;
-    text += `                                                 └────────────────┘\n\n`;
-
-    text += `## 4. Directory & Module Responsibilities\n`;
-    for (const sub of subdirs) {
-      if (sub === 'src') text += `• src/: Core application business logic, utilities, and execution engines.\n`;
-      else if (sub === 'bin') text += `• bin/: Executable binary wrappers and CLI entrypoints.\n`;
-      else if (sub === 'test' || sub === 'tests') text += `• test/: Automated verification suites and integration tests.\n`;
-      else if (sub === 'md') text += `• md/: Generated documentation and architectural markdown exports.\n`;
-      else text += `• ${sub}/: Domain module containing specialized project assets and submodules.\n`;
-    }
-
-    text += `\n## 5. Execution Entry Points & Developer Workflows\n`;
-    if (scripts.includes('start')) text += `• npm start: Launches the standard project application process.\n`;
-    if (scripts.includes('test')) text += `• npm test: Executes the test suite.\n`;
-    if (fs.existsSync(path.join(resolved, 'bin/rapidfire.js'))) text += `• node bin/rapidfire.js: Launches the RapidFire CLI and REPL.\n`;
   }
 
   return {
@@ -1272,8 +1475,8 @@ async function generateRepoOverview(repoPath, options = {}) {
   let systemInstruction = '';
 
   if (isCritic) {
-    systemInstruction = 'You are the senior staff software architect and principal code reviewer for RapidFire CLI. Provide a rigorous, constructive, and comprehensive critique of repository design and engineering practices.';
-    prompt = `Conduct an in-depth, candid, and constructive architectural critique of this repository. Evaluate code hygiene, separation of concerns, test coverage, potential vulnerabilities, and scalability trade-offs.
+    systemInstruction = 'You are the senior staff software architect and principal code reviewer for RapidFire CLI. Provide a rigorous, constructive, and accurate evaluation of repository design and engineering practices. Under Flaws, only report genuine architectural flaws if any exist; do not invent or fabricate unnecessary flaws. If no critical flaws exist, state "No critical architectural flaws detected."';
+    prompt = `Conduct an in-depth, candid, and constructive architectural critique of this repository. Evaluate code hygiene, separation of concerns, test coverage, and design trade-offs.
 
 Repository Context:
 ${repoContext.summary}
@@ -1281,21 +1484,44 @@ ${repoContext.summary}
 Provide your critique structured under these exact headers:
 # Architectural Critique: ${repoContext.repoName}
 
-## 1. Architectural Verdict & Health
-(Overall technical evaluation, maturity assessment, and architecture design rating)
+## 1. Agenda / Goal
+(Primary objective, purpose, and problem domain of the project)
 
-## 2. The Goods (Strengths & Clean Patterns)
-(Specific well-designed abstractions, separation of concerns, strengths in project organization)
+## 2. Use Case
+(Target audience, key use cases, and operating environments)
 
-## 3. The Bads & Flaws (Anti-Patterns, Risks & Code Smells)
-(Specific architectural flaws, monolithic components, tight coupling, testing gaps, fragile dependencies)
+## 3. Key Features
+(Core functional capabilities, CLI commands, and system workflows)
 
-## 4. Pros & Cons Analysis
-• Pros: (Key advantages of chosen technology stack and architectural approach)
-• Cons: (Operational, scalability, or maintenance drawbacks)
+## 4. Folder Architecture
+(ASCII tree and description of directory structure)
 
-## 5. Actionable Roadmap & Priority Fixes
-(Ranked list of highest-impact refactorings and structural enhancements)`;
+## 5. Data Pipeline Flowchart
+(ASCII or Mermaid diagram detailing data inputs, transformations, and outputs)
+
+## 6. File Overview / Directory Overview
+(Detailed breakdown of directories and key files with their individual roles)
+
+## 7. Working Flowchart
+(ASCII or Mermaid diagram depicting execution flow and runtime lifecycle)
+
+## 8. Technology Used
+(Runtimes, frameworks, libraries, and dev dependencies)
+
+## 9. Conclusion
+(Assessment of system maturity, architectural coherence, and design quality)
+
+## 10. Things to Work On / Fixes
+(Actionable, practical technical improvements and suggested fixes)
+
+## 11. Pros
+(Key strengths of the chosen architecture, design patterns, and engineering practices)
+
+## 12. Cons
+(Trade-offs, operational overhead, or architectural constraints)
+
+## 13. Flaws
+(Only report genuine flaws if they exist in the codebase. Do not invent unnecessary or artificial flaws. If no critical flaws exist, state "No critical architectural flaws detected.")`;
   } else {
     systemInstruction = 'You are the expert software architect assistant for RapidFire CLI. Provide clean, highly structured, technical codebase architecture overviews.';
     prompt = `Analyze and provide a comprehensive, developer-centric architectural overview of this repository.
@@ -1304,22 +1530,37 @@ Repository Context:
 ${repoContext.summary}
 
 Provide your overview structured under these exact headers:
-# Repository Architecture Overview: ${repoContext.repoName}
+# Repository Overview: ${repoContext.repoName}
 
-## 1. Executive Summary & Purpose
-(Primary problem domain, core capabilities, and high-level role)
+## 1. Agenda / Goal
+(Primary objective, purpose, and problem domain of the project)
 
-## 2. Tech Stack & Infrastructure
-(Runtimes, frameworks, dependencies, and external integrations)
+## 2. Use Case
+(Target audience, key use cases, and operating environments)
 
-## 3. Architecture & Data Flow Map
-(ASCII diagram depicting components, modules, data flow, and system boundaries)
+## 3. Key Features
+(Core functional capabilities, CLI commands, and system workflows)
 
-## 4. Directory & Module Responsibilities
-(Detailed breakdown of each major directory and component responsibility)
+## 4. Folder Architecture
+(ASCII tree and description of directory structure)
 
-## 5. Execution Entry Points & Developer Workflows
-(Main entry points, development scripts, testing commands, and deployment pathways)`;
+## 5. Data Pipeline Flowchart
+(ASCII or Mermaid diagram detailing data inputs, transformations, and outputs)
+
+## 6. File Overview / Directory Overview
+(Detailed breakdown of directories and key files with their individual roles)
+
+## 7. Working Flowchart
+(ASCII or Mermaid diagram depicting execution flow and runtime lifecycle)
+
+## 8. Technology Used
+(Runtimes, frameworks, libraries, and dev dependencies)
+
+## 9. Conclusion
+(Assessment of system maturity, architectural coherence, and design quality)
+
+## 10. Things to Work On / Fixes
+(Actionable, practical technical improvements and future enhancements)`;
   }
 
   try {

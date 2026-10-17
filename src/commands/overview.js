@@ -52,24 +52,27 @@ async function handleOverview(args = []) {
     fs.mkdirSync(mdDir, { recursive: true });
   }
 
-  const overviewMdPath = path.join(mdDir, 'overview.md');
-  fs.writeFileSync(overviewMdPath, result.text, 'utf8');
-
+  let overviewMdPath = null;
   let criticMdPath = null;
+
   if (isCritic) {
     criticMdPath = path.join(mdDir, 'overview_critic.md');
     fs.writeFileSync(criticMdPath, result.text, 'utf8');
+    recordOverviewEntry(repoRoot, result.text.slice(0, 300), 'md/overview_critic.md', true);
+  } else {
+    overviewMdPath = path.join(mdDir, 'overview.md');
+    fs.writeFileSync(overviewMdPath, result.text, 'utf8');
+    recordOverviewEntry(repoRoot, result.text.slice(0, 300), 'md/overview.md', false);
   }
-
-  recordOverviewEntry(repoRoot, result.text.slice(0, 300), 'md/overview.md', isCritic);
 
   const boxTitle = isCritic ? 'RapidFire Architectural Critique' : 'RapidFire Repository Overview';
   const formatted = formatMarkdownForTerminal(result.text.trim());
   console.log('\n' + renderTerminalBox(boxTitle, formatted));
 
-  console.log(`\n${green}[OK] Overview generated and saved to: md/overview.md${reset}`);
-  if (isCritic && criticMdPath) {
-    console.log(`${green}[OK] Critic report also saved to: md/overview_critic.md${reset}`);
+  if (isCritic) {
+    console.log(`\n${green}[OK] Critic report generated and saved to: md/overview_critic.md${reset}`);
+  } else {
+    console.log(`\n${green}[OK] Overview generated and saved to: md/overview.md${reset}`);
   }
 
   if (result.isFallback) {
@@ -79,11 +82,14 @@ async function handleOverview(args = []) {
     console.log(`${dim}[rapidfire-ai] Analyzed via ${result.model || 'AI'}.${reset}\n`);
   }
 
+  const savedPath = isCritic ? criticMdPath : overviewMdPath;
+
   return {
     ...result,
     isCritic,
-    mdPath: overviewMdPath,
-    criticMdPath
+    mdPath: savedPath,
+    criticMdPath,
+    savedPath
   };
 }
 

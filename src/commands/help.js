@@ -42,7 +42,7 @@ ${bold}PROJECT SCAFFOLDING RECIPES (7 FRAMEWORKS / 13 OPTIONS):${reset}
 
 ${bold}AI CODE GENERATION & ASSISTANCE:${reset}
   ${magenta}overview [--critic]${reset}          Comprehensive repo architecture overview (exports md/overview.md)
-                                (--critic evaluates strengths, flaws, anti-patterns, pros & cons)
+                                (--critic audits pros/cons/flaws to md/overview_critic.md)
   ${magenta}explain [file|folder]${reset}         Analyze codebase architecture, folder tree, or source file role
                                 (e.g. "explain src/repl.js" or "explain .")
   ${magenta}tell <instruction>${reset}            Generate files & code with structure preview & (Y/N) safety approval

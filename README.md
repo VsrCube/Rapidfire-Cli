@@ -485,13 +485,18 @@ overview
 # Or directly from your terminal:
 rapidfire overview
 ```
-* **Living Markdown Export**: Automatically generates and rewrites `md/overview.md` on every run.
+* **Living Markdown Export**: Automatically generates and rewrites `md/overview.md` on every standard run.
 * **Structured Sections**:
-  1. Executive Summary & Purpose
-  2. Tech Stack & Infrastructure Matrix
-  3. Architecture & Data Flow Map (ASCII system boundary diagram)
-  4. Directory & Module Responsibilities
-  5. Execution Entry Points & Developer Workflows
+  1. Agenda / Goal
+  2. Use Case
+  3. Key Features
+  4. Folder Architecture
+  5. Data Pipeline Flowchart
+  6. File Overview / Directory Overview
+  7. Working Flowchart
+  8. Technology Used
+  9. Conclusion
+  10. Things to Work On / Fixes
 * **Offline Deterministic Fallback**: Analyzes package manifests, directory trees, and dependencies locally with zero API key required.
 
 #### 2. Staff-Engineer Architectural Critique (`overview --critic`)
@@ -501,12 +506,11 @@ overview --critic
 # Typo-tolerant: overview --cirtic is also supported
 ```
 * **Evaluation Categories**:
-  1. Architectural Verdict & Health Rating (Design score & maturity assessment)
-  2. The Goods (Clean patterns, modular separation, strength in design)
-  3. The Bads & Flaws (Anti-patterns, code smells, tight coupling, testing gaps)
-  4. Pros & Cons Analysis (Trade-offs of selected tech stack)
-  5. Actionable Roadmap & Priority Fixes (Ranked recommendations)
-* **Dual Export**: Overwrites `md/overview.md` with the critique and also creates `md/overview_critic.md`.
+  All 10 standard sections above plus:
+  11. Pros (Architectural advantages and clean patterns)
+  12. Cons (Operational trade-offs and runtime constraints)
+  13. Flaws (Genuine structural flaws only; avoids fabricating artificial flaws)
+* **Exclusive Critic Export**: Generates exclusively `md/overview_critic.md` without overwriting or generating `md/overview.md`.
 
 #### 3. Granular Source & Directory Analysis (`explain`)
 Inspects individual files, subdirectories, or whole projects:

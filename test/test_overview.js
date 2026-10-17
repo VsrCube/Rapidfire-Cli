@@ -6,8 +6,8 @@ const { handleOverview } = require('../src/commands/overview');
 const { matchCommand } = require('../src/commands');
 const { loadRepoMemory } = require('../src/utils/repoMemory');
 
-function createTempProject() {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rf-overview-test-'));
+function createTempProject(prefix = 'rf-overview-test-') {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   fs.mkdirSync(path.join(tmpDir, '.git'));
   fs.mkdirSync(path.join(tmpDir, 'src'));
   fs.writeFileSync(path.join(tmpDir, 'src', 'index.js'), 'console.log("hello");\n');
@@ -52,17 +52,27 @@ async function runTests() {
 
     const mdDir = path.join(testProjectDir, 'md');
     const overviewFile = path.join(mdDir, 'overview.md');
+    const criticDedicatedFile = path.join(mdDir, 'overview_critic.md');
 
     assert.strictEqual(fs.existsSync(mdDir), true, 'md/ directory must exist');
     assert.strictEqual(fs.existsSync(overviewFile), true, 'md/overview.md must exist');
+    assert.strictEqual(fs.existsSync(criticDedicatedFile), false, 'overview_critic.md must NOT exist for standard overview');
 
     const content1 = fs.readFileSync(overviewFile, 'utf8');
-    assert(content1.includes('Architecture Overview') || content1.includes('Overview'), 'Must contain overview heading');
-    assert(content1.includes('Tech Stack') || content1.includes('Stack'), 'Must contain tech stack section');
+    assert(content1.includes('Agenda / Goal'), 'Must contain Agenda / Goal');
+    assert(content1.includes('Use Case'), 'Must contain Use Case');
+    assert(content1.includes('Key Features'), 'Must contain Key Features');
+    assert(content1.includes('Folder Architecture'), 'Must contain Folder Architecture');
+    assert(content1.includes('Data Pipeline Flowchart'), 'Must contain Data Pipeline Flowchart');
+    assert(content1.includes('File Overview / Directory Overview'), 'Must contain File/Directory Overview');
+    assert(content1.includes('Working Flowchart'), 'Must contain Working Flowchart');
+    assert(content1.includes('Technology Used'), 'Must contain Technology Used');
+    assert(content1.includes('Conclusion'), 'Must contain Conclusion');
+    assert(content1.includes('Things to Work On / Fixes'), 'Must contain Things to Work On / Fixes');
 
     const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
     assert.strictEqual(emojiRegex.test(content1), false, 'Overview markdown must not contain emojis');
-    console.log('[OK] Overview generation and markdown export verified.');
+    console.log('[OK] Overview 10-section generation and markdown export verified.');
 
     console.log('[Test 2] Verifying overview rewrite behavior...');
     fs.writeFileSync(path.join(testProjectDir, 'src', 'extra.js'), 'module.exports = {};\n');
@@ -73,21 +83,43 @@ async function runTests() {
     assert(content2.length > 50, 'Rewritten overview content must be valid');
     console.log('[OK] Overview file overwrite verified.');
 
-    console.log('[Test 3] Executing overview with --critic flag...');
-    const resultCritic = await handleOverview(['--critic']);
-    assert.strictEqual(resultCritic.success, true, 'Critic overview should succeed');
-    assert.strictEqual(resultCritic.isCritic, true, 'Critic mode must be true');
+    console.log('[Test 3] Executing overview with --critic flag in dedicated project...');
+    const criticProjectDir = createTempProject('rf-critic-exclusive-');
+    try {
+      process.chdir(criticProjectDir);
+      const resultCritic = await handleOverview(['--critic']);
+      assert.strictEqual(resultCritic.success, true, 'Critic overview should succeed');
+      assert.strictEqual(resultCritic.isCritic, true, 'Critic mode must be true');
 
-    const criticContent = fs.readFileSync(overviewFile, 'utf8');
-    assert(criticContent.includes('Critique'), 'Must contain critique heading');
-    assert(criticContent.includes('The Goods') || criticContent.includes('Goods'), 'Must contain Goods section');
-    assert(criticContent.includes('The Bads') || criticContent.includes('Flaws') || criticContent.includes('Bads'), 'Must contain Bads/Flaws section');
-    assert(criticContent.includes('Pros') && criticContent.includes('Cons'), 'Must contain Pros and Cons');
+      const criticMdDir = path.join(criticProjectDir, 'md');
+      const criticFile = path.join(criticMdDir, 'overview_critic.md');
+      const standardFile = path.join(criticMdDir, 'overview.md');
 
-    const criticDedicatedFile = path.join(mdDir, 'overview_critic.md');
-    assert.strictEqual(fs.existsSync(criticDedicatedFile), true, 'overview_critic.md must be generated');
-    assert.strictEqual(emojiRegex.test(criticContent), false, 'Critic markdown must not contain emojis');
-    console.log('[OK] Critic evaluation, goods/bads/flaws/pros/cons verified.');
+      assert.strictEqual(fs.existsSync(criticFile), true, 'overview_critic.md must be generated');
+      assert.strictEqual(fs.existsSync(standardFile), false, 'overview.md must NOT be generated when --critic is specified');
+
+      const criticContent = fs.readFileSync(criticFile, 'utf8');
+      assert(criticContent.includes('Architectural Critique'), 'Must contain critique heading');
+      assert(criticContent.includes('Agenda / Goal'), 'Must contain Agenda / Goal');
+      assert(criticContent.includes('Use Case'), 'Must contain Use Case');
+      assert(criticContent.includes('Key Features'), 'Must contain Key Features');
+      assert(criticContent.includes('Folder Architecture'), 'Must contain Folder Architecture');
+      assert(criticContent.includes('Data Pipeline Flowchart'), 'Must contain Data Pipeline Flowchart');
+      assert(criticContent.includes('File Overview / Directory Overview'), 'Must contain File/Directory Overview');
+      assert(criticContent.includes('Working Flowchart'), 'Must contain Working Flowchart');
+      assert(criticContent.includes('Technology Used'), 'Must contain Technology Used');
+      assert(criticContent.includes('Conclusion'), 'Must contain Conclusion');
+      assert(criticContent.includes('Things to Work On / Fixes'), 'Must contain Things to Work On / Fixes');
+      assert(criticContent.includes('Pros'), 'Must contain Pros section');
+      assert(criticContent.includes('Cons'), 'Must contain Cons section');
+      assert(criticContent.includes('Flaws'), 'Must contain Flaws section');
+      assert(criticContent.includes('No critical architectural flaws detected'), 'Must not create unnecessary flaws for sound project');
+      assert.strictEqual(emojiRegex.test(criticContent), false, 'Critic markdown must not contain emojis');
+      console.log('[OK] Critic evaluation exclusive export and 13-section layout verified.');
+    } finally {
+      process.chdir(testProjectDir);
+      cleanupTempProject(criticProjectDir);
+    }
 
     console.log('[Test 4] Verifying typo tolerance with --cirtic...');
     const resultTypo = await handleOverview(['--cirtic']);
