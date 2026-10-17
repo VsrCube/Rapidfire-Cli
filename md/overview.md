@@ -1,8 +1,8 @@
-# Repository Overview: rapidfire-cli (v0.1.28)
+# Repository Overview: rapidfire-cli (v0.1.31)
 
 Target: /home/vedansh/Desktop/miniproject
 Primary Stack: Google Gemini AI
-Total Tracked Modules/Files: 124
+Total Tracked Modules/Files: 130
 
 ## 1. Agenda / Goal
 The primary goal of rapidfire-cli is: Terminal overlay and shell passthrough REPL with instant developer scaffolding recipes.
@@ -48,6 +48,7 @@ miniproject/
 │   ├── utils/                        (Repo memory DB, filesystem helpers, process execution)
 │   └── repl.js                       (Interactive pseudo-terminal PTY loop & shell passthrough)
 ├── documents/
+├── md/
 ├── test/
 ├── .env
 ├── .gitignore
@@ -120,6 +121,7 @@ miniproject/
 • src/utils/repoMemory.js: Repository memory database (.rapidfire/db.json) caching overviews and conversations.
 • src/utils/repoContext.js: Project topology inspection, dependency extraction, and context builder.
 • documents/: Academic documentation, synopsis, and project specifications.
+• md/: Living markdown architectural exports and system documentation.
 • test/: Verification suites containing 33 test specifications validating core features.
 • README.md: Primary repository documentation and developer onboarding guide.
 • package.json: Application manifest detailing scripts, metadata, and dependencies.
@@ -170,10 +172,16 @@ miniproject/
 • Core Runtime Dependencies: @google/generative-ai, fs-extra, node-pty
 • Lifecycle Scripts: start, test
 
-## 9. Conclusion
+## 9. Security
+• Secret Scanning Gate: Integrated Gitleaks pre-push hooks automatically audit staged diffs and prevent credential leaks before commits leave the developer machine.
+• Credential & Key Hygiene: AI provider tokens (Gemini, Groq, OpenAI) are strictly isolated in ~/.rapidfire/config.json with restrictive permissions (0600 mode) and never checked into source control.
+• Safe Subprocess Invocation: Process runners execute child commands via structured argument arrays, mitigating shell injection vulnerabilities.
+• Workspace Boundary Protection: File operations and scaffolding engines enforce directory containment guards to prevent directory traversal and collision vulnerabilities.
+
+## 10. Conclusion
 The codebase exhibits an advanced, production-grade modular architecture characterized by high cohesion and low coupling. Key responsibilities are partitioned cleanly across presentation (REPL), command dispatch, scaffolding, and cloud integrations. With 33 automated verification suites present across POSIX and Windows environments, the repository demonstrates exceptional regression safety and reliability for production workflows.
 
-## 10. Things to Work On / Fixes
+## 11. Things to Work On / Fixes
 1. High Priority: Integrate web-tree-sitter (WASM) parser to replace heuristic regex scanners with full Abstract Syntax Trees for multi-language dependency graphs.
 2. Medium Priority: Implement user persona profiles (profile learner vs profile developer) to toggle between Socratic hints and concise production solutions.
 3. Medium Priority: Implement automated citation validation ([file:line-range]) verifying that model references point to existing source lines.

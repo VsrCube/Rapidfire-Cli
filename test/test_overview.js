@@ -67,12 +67,13 @@ async function runTests() {
     assert(content1.includes('File Overview / Directory Overview'), 'Must contain File/Directory Overview');
     assert(content1.includes('Working Flowchart'), 'Must contain Working Flowchart');
     assert(content1.includes('Technology Used'), 'Must contain Technology Used');
+    assert(content1.includes('Security'), 'Must contain Security');
     assert(content1.includes('Conclusion'), 'Must contain Conclusion');
     assert(content1.includes('Things to Work On / Fixes'), 'Must contain Things to Work On / Fixes');
 
     const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
     assert.strictEqual(emojiRegex.test(content1), false, 'Overview markdown must not contain emojis');
-    console.log('[OK] Overview 10-section generation and markdown export verified.');
+    console.log('[OK] Overview 11-section generation and markdown export verified.');
 
     console.log('[Test 2] Verifying overview rewrite behavior...');
     fs.writeFileSync(path.join(testProjectDir, 'src', 'extra.js'), 'module.exports = {};\n');
@@ -108,13 +109,14 @@ async function runTests() {
       assert(criticContent.includes('File Overview / Directory Overview'), 'Must contain File/Directory Overview');
       assert(criticContent.includes('Working Flowchart'), 'Must contain Working Flowchart');
       assert(criticContent.includes('Technology Used'), 'Must contain Technology Used');
+      assert(criticContent.includes('Security'), 'Must contain Security');
       assert(criticContent.includes('Conclusion'), 'Must contain Conclusion');
       assert(criticContent.includes('Things to Work On / Fixes'), 'Must contain Things to Work On / Fixes');
       assert(criticContent.includes('Pros'), 'Must contain Pros section');
       assert(criticContent.includes('Cons'), 'Must contain Cons section');
       assert(criticContent.includes('No critical architectural flaws detected') || criticContent.toLowerCase().includes('flaw'), 'Must evaluate architectural flaws');
       assert.strictEqual(emojiRegex.test(criticContent), false, 'Critic markdown must not contain emojis');
-      console.log('[OK] Critic evaluation exclusive export and 13-section layout verified.');
+      console.log('[OK] Critic evaluation exclusive export and 14-section layout verified.');
     } finally {
       process.chdir(testProjectDir);
       cleanupTempProject(criticProjectDir);
@@ -162,6 +164,7 @@ async function runTests() {
       assert.strictEqual(fs.existsSync(emptyMdFile), true, 'md/overview.md must exist in target empty dir');
       const emptyContent = fs.readFileSync(emptyMdFile, 'utf8');
       assert(emptyContent.includes('currently empty'), 'Must report directory is empty');
+      assert(emptyContent.includes('Security'), 'Must contain Security section in empty overview');
       assert(!emptyContent.includes('Cargo.toml'), 'Must not hallucinate phantom files');
       console.log('[OK] Empty directory handling verified without hallucination.');
     } finally {

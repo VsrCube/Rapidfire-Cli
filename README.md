@@ -495,8 +495,9 @@ rapidfire overview
   6. File Overview / Directory Overview
   7. Working Flowchart
   8. Technology Used
-  9. Conclusion
-  10. Things to Work On / Fixes
+  9. Security
+  10. Conclusion
+  11. Things to Work On / Fixes
 * **Offline Deterministic Fallback**: Analyzes package manifests, directory trees, and dependencies locally with zero API key required.
 
 #### 2. Staff-Engineer Architectural Critique (`overview --critic`)
@@ -506,10 +507,10 @@ overview --critic
 # Typo-tolerant: overview --cirtic is also supported
 ```
 * **Evaluation Categories**:
-  All 10 standard sections above plus:
-  11. Pros (Architectural advantages and clean patterns)
-  12. Cons (Operational trade-offs and runtime constraints)
-  13. Flaws (Genuine structural flaws only; avoids fabricating artificial flaws)
+  All 11 standard sections above plus:
+  12. Pros (Architectural advantages and clean patterns)
+  13. Cons (Operational trade-offs and runtime constraints)
+  14. Flaws (Genuine structural flaws only; avoids fabricating artificial flaws)
 * **Exclusive Critic Export**: Generates exclusively `md/overview_critic.md` without overwriting or generating `md/overview.md`.
 
 #### 3. Granular Source & Directory Analysis (`explain`)
