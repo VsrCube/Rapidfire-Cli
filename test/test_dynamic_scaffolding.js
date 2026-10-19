@@ -1,5 +1,6 @@
 const assert = require('assert');
 const path = require('path');
+const os = require('os');
 const fse = require('fs-extra');
 const { planStack, PREDEFINED_RECIPES } = require('../src/scaffolding/planner');
 const { handleSetup } = require('../src/commands/setup');
@@ -40,7 +41,7 @@ async function runTests() {
   console.log('✔ StackPlanner accurately categorizes Predefined, Composed, and Dynamic stacks.\n');
 
   console.log('[Test 2] Testing live scaffolding of composed stack (svelte+fastapi)...');
-  const tempDir = path.join('/tmp', `rapidfire_test_dynamic_${Date.now()}`);
+  const tempDir = path.join(os.tmpdir(), `rapidfire_test_dynamic_${Date.now()}`);
   fse.ensureDirSync(tempDir);
   const origCwd = process.cwd();
   process.chdir(tempDir);
@@ -80,7 +81,7 @@ async function runTests() {
   }
 
   console.log('[Test 3] Testing user rejection (N) on unknown framework scaffolding...');
-  const tempDirReject = path.join('/tmp', `rapidfire_test_reject_${Date.now()}`);
+  const tempDirReject = path.join(os.tmpdir(), `rapidfire_test_reject_${Date.now()}`);
   fse.ensureDirSync(tempDirReject);
   process.chdir(tempDirReject);
 
@@ -101,7 +102,7 @@ async function runTests() {
   }
 
   console.log('[Test 4] Testing dynamic scaffolding for unknown framework (astro)...');
-  const tempDirDynamic = path.join('/tmp', `rapidfire_test_astro_${Date.now()}`);
+  const tempDirDynamic = path.join(os.tmpdir(), `rapidfire_test_astro_${Date.now()}`);
   fse.ensureDirSync(tempDirDynamic);
   process.chdir(tempDirDynamic);
 
@@ -136,7 +137,7 @@ async function runTests() {
   }
 
   console.log('[Test 5] Testing non-interactive --dynamic flag for unknown framework (solid)...');
-  const tempDirFlag = path.join('/tmp', `rapidfire_test_flag_${Date.now()}`);
+  const tempDirFlag = path.join(os.tmpdir(), `rapidfire_test_flag_${Date.now()}`);
   fse.ensureDirSync(tempDirFlag);
   process.chdir(tempDirFlag);
 

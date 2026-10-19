@@ -1,5 +1,6 @@
 const assert = require('assert');
 const path = require('path');
+const os = require('os');
 const fse = require('fs-extra');
 const { planStack } = require('../src/scaffolding/planner');
 const { getFallbackBlueprint } = require('../src/scaffolding/dynamicEngine');
@@ -58,7 +59,7 @@ async function runTests() {
   console.log('[OK] Fallback full-stack blueprint provides pre-wired CORS, API client, and database configuration.');
 
   console.log('[Test 3] Testing live non-interactive scaffolding of dynamic full-stack stack...');
-  const tempDir = path.join('/tmp', `rapidfire_test_fullstack_${Date.now()}`);
+  const tempDir = path.join(os.tmpdir(), `rapidfire_test_fullstack_${Date.now()}`);
   fse.ensureDirSync(tempDir);
   const origCwd = process.cwd();
   process.chdir(tempDir);
