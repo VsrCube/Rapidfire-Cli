@@ -528,15 +528,25 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     console.warn('[rapidfire] Git initialization notice:', err.message);
   }
 
-  if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1' && blueprint.ecosystem === 'node' && fse.existsSync(path.join(projectPath, 'package.json')) && commandExists('npm')) {
-    const installPrompt = `\nDo you want to run 'npm install' now? (Y/N): `;
-    const shouldInstall = await promptConfirmation(context, installPrompt, 'y');
-    if (shouldInstall) {
-      console.log('[rapidfire] Installing dependencies with npm...');
-      try {
-        run('npm install', { cwd: projectPath, stdio: 'inherit' });
-      } catch (err) {
-        console.warn('\x1b[33m[rapidfire] npm install notice:\x1b[0m', err.message);
+  if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1' && commandExists('npm')) {
+    const pkgLocations = [];
+    if (fse.existsSync(path.join(projectPath, 'package.json'))) pkgLocations.push(projectPath);
+    if (fse.existsSync(path.join(projectPath, 'frontend', 'package.json'))) pkgLocations.push(path.join(projectPath, 'frontend'));
+    if (fse.existsSync(path.join(projectPath, 'backend', 'package.json'))) pkgLocations.push(path.join(projectPath, 'backend'));
+
+    if (pkgLocations.length > 0) {
+      const installPrompt = `\nDo you want to run 'npm install' to install dependencies now? (Y/N): `;
+      const shouldInstall = await promptConfirmation(context, installPrompt, 'y');
+      if (shouldInstall) {
+        for (const loc of pkgLocations) {
+          const relName = path.relative(projectPath, loc) || targetFolder;
+          console.log(`[rapidfire] Installing dependencies in ${relName}...`);
+          try {
+            run('npm install', { cwd: loc, stdio: 'inherit' });
+          } catch (err) {
+            console.warn(`\x1b[33m[rapidfire] npm install notice for ${relName}:\x1b[0m`, err.message);
+          }
+        }
       }
     }
   }

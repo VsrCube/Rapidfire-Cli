@@ -1,6 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const { spawn, exec } = require('child_process');
+const { spawn, exec, execSync } = require('child_process');
 const { readManifest } = require('../utils/manifest');
 
 const activeProcesses = [];
@@ -32,9 +32,18 @@ function handleRun(args = []) {
   let backendUrl = null;
   let frontendUrl = null;
 
-  // 1. Launch Backend if present
   if (hasBackend) {
     const backendDir = path.join(target, 'backend');
+    if (fs.existsSync(path.join(backendDir, 'package.json')) && !fs.existsSync(path.join(backendDir, 'node_modules'))) {
+      console.log('\x1b[33m[*] Installing missing backend dependencies (npm install)...\x1b[0m');
+      try {
+        const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+        execSync(`${npmCmd} install`, { cwd: backendDir, stdio: 'inherit' });
+      } catch (err) {
+        console.warn('\x1b[33m[WARN] Backend npm install failed:\x1b[0m', err.message);
+      }
+    }
+
     if (fs.existsSync(path.join(backendDir, 'main.py'))) {
       console.log('\x1b[32m[*] Launching Python FastAPI backend (Uvicorn on port 8000)...\x1b[0m');
       const pyCmd = process.platform === 'win32' ? 'python' : 'python3';
@@ -107,13 +116,32 @@ function handleRun(args = []) {
     }
   }
 
-  // 2. Launch Frontend if present
   if (hasFrontend) {
     const frontendDir = path.join(target, 'frontend');
     if (fs.existsSync(path.join(frontendDir, 'package.json'))) {
-      console.log('\x1b[32m[*] Launching Vite Frontend dev server (Port 3000)...\x1b[0m');
+      if (!fs.existsSync(path.join(frontendDir, 'node_modules'))) {
+        console.log('\x1b[33m[*] Installing missing frontend dependencies (npm install)...\x1b[0m');
+        try {
+          const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+          execSync(`${npmCmd} install`, { cwd: frontendDir, stdio: 'inherit' });
+        } catch (err) {
+          console.warn('\x1b[33m[WARN] Frontend npm install failed:\x1b[0m', err.message);
+        }
+      }
+
+      let feScript = 'dev';
+      try {
+        const fePkg = JSON.parse(fs.readFileSync(path.join(frontendDir, 'package.json'), 'utf8'));
+        if (fePkg.scripts) {
+          if (fePkg.scripts.dev) feScript = 'dev';
+          else if (fePkg.scripts.start) feScript = 'start';
+        }
+      } catch {}
+
+      console.log(`\x1b[32m[*] Launching Frontend dev server (${feScript} on Port 3000)...\x1b[0m`);
       const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-      const feProc = spawn(npmCmd, ['run', 'dev'], {
+      const feArgs = feScript === 'start' ? ['start'] : ['run', feScript];
+      const feProc = spawn(npmCmd, feArgs, {
         cwd: frontendDir,
         stdio: 'inherit'
       });
@@ -121,10 +149,29 @@ function handleRun(args = []) {
       frontendUrl = 'http://localhost:3000';
     }
   } else if (hasRootPkg) {
-    // Standalone frontend at root
-    console.log('\x1b[32m[*] Launching standalone project dev server...\x1b[0m');
+    if (!fs.existsSync(path.join(target, 'node_modules'))) {
+      console.log('\x1b[33m[*] Installing missing dependencies (npm install)...\x1b[0m');
+      try {
+        const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+        execSync(`${npmCmd} install`, { cwd: target, stdio: 'inherit' });
+      } catch (err) {
+        console.warn('\x1b[33m[WARN] Root npm install failed:\x1b[0m', err.message);
+      }
+    }
+
+    let rootScript = 'dev';
+    try {
+      const rootPkg = JSON.parse(fs.readFileSync(path.join(target, 'package.json'), 'utf8'));
+      if (rootPkg.scripts) {
+        if (rootPkg.scripts.dev) rootScript = 'dev';
+        else if (rootPkg.scripts.start) rootScript = 'start';
+      }
+    } catch {}
+
+    console.log(`\x1b[32m[*] Launching standalone project dev server (${rootScript})...\x1b[0m`);
     const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const feProc = spawn(npmCmd, ['run', 'dev'], {
+    const rootArgs = rootScript === 'start' ? ['start'] : ['run', rootScript];
+    const feProc = spawn(npmCmd, rootArgs, {
       cwd: target,
       stdio: 'inherit'
     });
@@ -137,7 +184,7 @@ function handleRun(args = []) {
   setTimeout(() => {
     console.log(`\n\x1b[32m[OK] Application is live!\x1b[0m`);
     if (frontendUrl) console.log(`  Frontend: \x1b[36m${frontendUrl}\x1b[0m`);
-    if (backendUrl) console.log(`  Backend:  \x1b[36${backendUrl}\x1b[0m (Docs: \x1b[33m${backendUrl}/docs\x1b[0m)`);
+    if (backendUrl) console.log(`  Backend:  \x1b[36m${backendUrl}\x1b[0m (Docs: \x1b[33m${backendUrl}/docs\x1b[0m)`);
     console.log(`\nOpening in browser: \x1b[1m\x1b[36m${primaryUrl}\x1b[0m`);
     console.log(`\x1b[2mPress Ctrl+C to stop all servers.\x1b[0m\n`);
     openBrowser(primaryUrl);
