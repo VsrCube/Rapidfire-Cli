@@ -61,6 +61,49 @@ function handleRun(args = []) {
       });
       activeProcesses.push(beProc);
       backendUrl = 'http://localhost:8000';
+    } else if (fs.existsSync(path.join(backendDir, 'app.py'))) {
+      console.log('\x1b[32m[*] Launching Python backend (Port 5000)...\x1b[0m');
+      const pyCmd = process.platform === 'win32' ? 'python' : 'python3';
+      const beProc = spawn(pyCmd, ['app.py'], {
+        cwd: backendDir,
+        stdio: 'inherit'
+      });
+      activeProcesses.push(beProc);
+      backendUrl = 'http://localhost:5000';
+    } else if (fs.existsSync(path.join(backendDir, 'index.js')) || fs.existsSync(path.join(backendDir, 'app.js'))) {
+      const entry = fs.existsSync(path.join(backendDir, 'index.js')) ? 'index.js' : 'app.js';
+      console.log(`\x1b[32m[*] Launching Node.js backend (${entry} on Port 5000)...\x1b[0m`);
+      const beProc = spawn('node', [entry], {
+        cwd: backendDir,
+        stdio: 'inherit'
+      });
+      activeProcesses.push(beProc);
+      backendUrl = 'http://localhost:5000';
+    } else if (fs.existsSync(path.join(backendDir, 'main.go'))) {
+      console.log('\x1b[32m[*] Launching Go backend (Port 8080)...\x1b[0m');
+      const beProc = spawn('go', ['run', 'main.go'], {
+        cwd: backendDir,
+        stdio: 'inherit'
+      });
+      activeProcesses.push(beProc);
+      backendUrl = 'http://localhost:8080';
+    } else if (fs.existsSync(path.join(backendDir, 'Cargo.toml'))) {
+      console.log('\x1b[32m[*] Launching Rust backend (Port 8080)...\x1b[0m');
+      const beProc = spawn('cargo', ['run'], {
+        cwd: backendDir,
+        stdio: 'inherit'
+      });
+      activeProcesses.push(beProc);
+      backendUrl = 'http://localhost:8080';
+    } else if (fs.existsSync(path.join(backendDir, 'package.json'))) {
+      console.log('\x1b[32m[*] Launching Backend via npm script (Port 5000)...\x1b[0m');
+      const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+      const beProc = spawn(npmCmd, ['start'], {
+        cwd: backendDir,
+        stdio: 'inherit'
+      });
+      activeProcesses.push(beProc);
+      backendUrl = 'http://localhost:5000';
     }
   }
 

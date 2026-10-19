@@ -6,8 +6,137 @@ const { isGhInstalled, isGhAuthenticated, createRepo } = require('../integration
 const { run, commandExists } = require('../utils/proc');
 const { getParentGitRepo } = require('../utils/gitContext');
 
+function getFallbackFullstackBlueprint(stack, targetFolder) {
+  const parts = stack.split('+').map(p => p.trim());
+  const fe = parts[0] || 'client';
+  const be = parts[1] || 'server';
+  const db = parts[2] || 'sqlite';
+
+  const isPythonBe = be.includes('py') || be.includes('fastapi') || be.includes('flask') || be.includes('django');
+  const backendPort = isPythonBe ? 8000 : 5000;
+
+  const files = [
+    {
+      filename: 'package.json',
+      content: JSON.stringify({
+        name: targetFolder,
+        version: '0.1.0',
+        private: true,
+        scripts: {
+          start: `node -e "console.log('Run frontend and backend with: rapidfire run ${targetFolder}')"`
+        }
+      }, null, 2)
+    },
+    {
+      filename: 'frontend/package.json',
+      content: JSON.stringify({
+        name: `${targetFolder}-frontend`,
+        version: '0.1.0',
+        private: true,
+        type: 'module',
+        scripts: {
+          dev: 'vite --port 3000',
+          build: 'vite build',
+          preview: 'vite preview'
+        },
+        dependencies: {
+          react: '^18.3.1',
+          'react-dom': '^18.3.1'
+        },
+        devDependencies: {
+          '@vitejs/plugin-react': '^4.3.4',
+          vite: '^5.4.11'
+        }
+      }, null, 2)
+    },
+    {
+      filename: 'frontend/vite.config.js',
+      content: `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\nexport default defineConfig({ plugins: [react()], server: { port: 3000, proxy: { '/api': 'http://localhost:${backendPort}' } } });\n`
+    },
+    {
+      filename: 'frontend/index.html',
+      content: `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${targetFolder} (${fe}+${be})</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>\n`
+    },
+    {
+      filename: 'frontend/.env.example',
+      content: `VITE_API_URL=http://localhost:${backendPort}\n`
+    },
+    {
+      filename: 'frontend/.env',
+      content: `VITE_API_URL=http://localhost:${backendPort}\n`
+    },
+    {
+      filename: 'frontend/src/main.jsx',
+      content: `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\nReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);\n`
+    },
+    {
+      filename: 'frontend/src/App.jsx',
+      content: `import React, { useState } from 'react';\nconst API_URL = import.meta.env.VITE_API_URL || 'http://localhost:${backendPort}';\n\nexport default function App() {\n  const [status, setStatus] = useState(null);\n  const [loading, setLoading] = useState(false);\n\n  const pingBackend = async () => {\n    setLoading(true);\n    try {\n      const res = await fetch(\`\${API_URL}/api/health\`);\n      const data = await res.json();\n      setStatus(data);\n    } catch (err) {\n      setStatus({ error: err.message });\n    } finally {\n      setLoading(false);\n    }\n  };\n\n  return (\n    <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', textAlign: 'center', background: '#0b0f19', color: '#f8fafc', minHeight: '100vh' }}>\n      <h1>RapidFire Full-Stack: ${fe} + ${be}</h1>\n      <p>Database: <code>${db}</code></p>\n      <button onClick={pingBackend} disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>\n        {loading ? 'Connecting...' : 'Test Backend Connection'}\n      </button>\n      {status && (\n        <pre style={{ marginTop: '1.5rem', padding: '1rem', background: '#1e293b', borderRadius: '8px', display: 'inline-block', textAlign: 'left' }}>\n          {JSON.stringify(status, null, 2)}\n        </pre>\n      )}\n    </main>\n  );\n}\n`
+    }
+  ];
+
+  if (isPythonBe) {
+    files.push({
+      filename: 'backend/main.py',
+      content: `from fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\n\napp = FastAPI(title="${targetFolder} API")\n\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],\n    allow_credentials=True,\n    allow_methods=["*"],\n    allow_headers=["*"],\n)\n\n@app.get("/api/health")\ndef health():\n    return {\n        "status": "online",\n        "service": "${be}",\n        "database": "${db}",\n        "connected": True\n    }\n\nif __name__ == "__main__":\n    import uvicorn\n    uvicorn.run(app, host="0.0.0.0", port=${backendPort})\n`
+    });
+    files.push({
+      filename: 'backend/requirements.txt',
+      content: `fastapi>=0.110.0\nuvicorn>=0.28.0\n`
+    });
+  } else {
+    files.push({
+      filename: 'backend/package.json',
+      content: JSON.stringify({
+        name: `${targetFolder}-backend`,
+        version: '0.1.0',
+        private: true,
+        scripts: {
+          start: 'node server.js',
+          dev: 'node --watch server.js'
+        },
+        dependencies: {
+          express: '^4.19.2',
+          cors: '^2.8.5'
+        }
+      }, null, 2)
+    });
+    files.push({
+      filename: 'backend/server.js',
+      content: `const express = require('express');\nconst cors = require('cors');\nconst app = express();\nconst PORT = process.env.PORT || ${backendPort};\n\napp.use(cors({ origin: 'http://localhost:3000' }));\napp.use(express.json());\n\napp.get('/api/health', (req, res) => {\n  res.json({\n    status: 'online',\n    service: '${be}',\n    database: '${db}',\n    connected: true\n  });\n});\n\napp.listen(PORT, () => {\n  console.log(\`[backend] ${be} server listening on port \${PORT}\`);\n});\n`
+    });
+  }
+
+  files.push({
+    filename: 'backend/.env.example',
+    content: `PORT=${backendPort}\nDATABASE_URL=sqlite:///./app.db\n`
+  });
+  files.push({
+    filename: 'backend/.env',
+    content: `PORT=${backendPort}\nDATABASE_URL=sqlite:///./app.db\n`
+  });
+  files.push({
+    filename: '.gitignore',
+    content: `node_modules/\ndist/\n.env\n*.pyc\n__pycache__/\n*.db\n*.sqlite\n*.sqlite3\n`
+  });
+  files.push({
+    filename: 'README.md',
+    content: `# ${targetFolder}\nFull-stack application dynamically scaffolded for \`${stack}\`.\n\n## Running the Full-Stack Application\n\`\`\`bash\nrapidfire run ${targetFolder}\n\`\`\`\n\nOr individually:\n\`\`\`bash\n# Frontend\ncd frontend && npm install && npm run dev\n\n# Backend\ncd backend && npm install && npm start\n\`\`\`\n`
+  });
+
+  return {
+    summary: `Full-stack ${fe} + ${be} architecture with ${db} database connectivity in '${targetFolder}'`,
+    ecosystem: isPythonBe ? 'python' : 'node',
+    files
+  };
+}
+
 function getFallbackBlueprint(stack, targetFolder) {
   const s = stack.toLowerCase();
+
+  if (s.includes('+')) {
+    return getFallbackFullstackBlueprint(stack, targetFolder);
+  }
 
   if (s.includes('astro')) {
     return {
@@ -202,9 +331,25 @@ async function generateBlueprint(stack, targetFolder) {
 
   try {
     const provider = require('../ai/provider');
-    const prompt = `You are a software scaffolding engine for RapidFire CLI.
+    const isFullstack = stack.includes('+') || ['mern', 'mean', 'mevn', 't3'].some(k => stack.toLowerCase().includes(k));
+
+    let prompt = `You are a software scaffolding engine for RapidFire CLI.
 The user wants to scaffold a new project for framework/stack: "${stack}" in directory "${targetFolder}".
-Generate a complete, minimal, working starter project.
+Generate a complete, minimal, working starter project.`;
+
+    if (isFullstack) {
+      prompt += `
+CRITICAL FULL-STACK CONNECTIVITY REQUIREMENTS:
+1. Architecture: If using distinct frontend and backend technologies (e.g. separated by '+'), structure with "frontend/" and "backend/" subdirectories.
+2. Connectivity:
+   - Frontend must include an API client/fetch call to backend (e.g. /api/health).
+   - Backend must configure CORS allowing http://localhost:3000.
+   - Include .env and .env.example files with API_URL and DATABASE_URL variables.
+   - If a database is specified, provide connection initialization code or SQLite configuration.
+3. Execution: Each tier must contain its respective package manifest (package.json, requirements.txt, or go.mod) and runnable scripts.`;
+    }
+
+    prompt += `
 You MUST respond ONLY with valid JSON in this exact schema, without markdown formatting or code blocks:
 {
   "summary": "Brief 1-sentence description of the project blueprint",

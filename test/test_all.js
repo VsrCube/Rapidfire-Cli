@@ -29,6 +29,7 @@ const testScripts = [
   'test/test_push_command.js',
   'test/test_repl_prompt.js',
   'test/test_dynamic_scaffolding.js',
+  'test/test_dynamic_fullstack.js',
   'test/test_nested_git.js',
   'test/test_run_command.js',
   'test/test_repo_memory.js',

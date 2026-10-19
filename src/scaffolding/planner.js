@@ -33,7 +33,7 @@ function planStack(stackInput) {
   }
 
   if (normalized.includes('+')) {
-    const parts = normalized.split('+');
+    const parts = normalized.split('+').map(p => p.trim()).filter(Boolean);
     if (parts.length === 2) {
       const [fe, be] = parts;
       const feKnown = hasFrontendAdapter(fe);
@@ -54,6 +54,25 @@ function planStack(stackInput) {
         isFullstackPairing: true,
         frontend: fe,
         backend: be,
+        knownFrontend: feKnown,
+        knownBackend: beKnown
+      };
+    }
+
+    if (parts.length >= 3) {
+      const fe = parts[0];
+      const be = parts[1];
+      const db = parts.slice(2).join('+');
+      const feKnown = hasFrontendAdapter(fe);
+      const beKnown = hasBackendAdapter(be);
+
+      return {
+        tier: 'DYNAMIC',
+        stack: normalized,
+        isFullstackPairing: true,
+        frontend: fe,
+        backend: be,
+        database: db,
         knownFrontend: feKnown,
         knownBackend: beKnown
       };

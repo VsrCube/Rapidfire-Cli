@@ -188,6 +188,14 @@ function createCompleter() {
       }
     }
 
+    if (cmd === 'help') {
+      const topics = ['setup', 'push', 'overview', 'explain', 'key', 'presets', 'run', 'ask', 'tell', 'suggest', 'deploy', 'help'];
+      const currentTopic = tokens[1] ? tokens[1].toLowerCase() : '';
+      const hits = topics.filter((t) => t.startsWith(currentTopic));
+      const completions = hits.map((h) => `help ${h}`);
+      return [completions.length ? completions : topics.map((t) => `help ${t}`), line];
+    }
+
     return [[], line];
   };
 }

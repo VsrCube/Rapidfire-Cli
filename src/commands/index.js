@@ -43,7 +43,7 @@ function matchCommand(line) {
   if (cmd === 'help') {
     return {
       name: 'help',
-      run: async () => showHelp()
+      run: async () => showHelp(tokens.slice(1))
     };
   }
 
