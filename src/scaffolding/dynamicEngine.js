@@ -364,7 +364,7 @@ CRITICAL FULL-STACK CONNECTIVITY REQUIREMENTS:
    - Backend must configure CORS allowing http://localhost:3000.
    - Include .env and .env.example files with API_URL and DATABASE_URL variables.
    - If a database is specified, provide connection initialization code or SQLite configuration.
-3. Execution: Each tier must contain its respective package manifest (package.json, requirements.txt, or go.mod) and runnable scripts.`;
+3. Execution: Each tier must contain its respective package manifest (package.json, requirements.txt, or go.mod) and runnable scripts. If frontend is React (CRA or Vite), ALWAYS include "public/index.html" (or "index.html" for Vite) with <div id="root"></div> and a "dev" script in package.json.`;
     }
 
     prompt += `
@@ -483,6 +483,29 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
       ? '__pycache__/\n*.pyc\nvenv/\n.env\n'
       : 'node_modules/\ndist/\n.env\n*.log\n';
     fse.writeFileSync(path.join(projectPath, '.gitignore'), defaultIgnore, 'utf8');
+  }
+
+  const frontendDir = fse.existsSync(path.join(projectPath, 'frontend'))
+    ? path.join(projectPath, 'frontend')
+    : projectPath;
+  const fePkgPath = path.join(frontendDir, 'package.json');
+  if (fse.existsSync(fePkgPath)) {
+    try {
+      const fePkg = fse.readJsonSync(fePkgPath);
+      const isCra = Boolean((fePkg.dependencies && fePkg.dependencies['react-scripts']) ||
+                    (fePkg.scripts && fePkg.scripts.start && fePkg.scripts.start.includes('react-scripts')));
+      if (isCra) {
+        const craHtmlPath = path.join(frontendDir, 'public', 'index.html');
+        if (!fse.existsSync(craHtmlPath)) {
+          fse.ensureDirSync(path.join(frontendDir, 'public'));
+          fse.writeFileSync(craHtmlPath, `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <meta charset="utf-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1" />\n    <title>${targetFolder}</title>\n  </head>\n  <body>\n    <noscript>You need to enable JavaScript to run this app.</noscript>\n    <div id="root"></div>\n  </body>\n</html>\n`, 'utf8');
+        }
+        if (!fePkg.scripts.dev && fePkg.scripts.start) {
+          fePkg.scripts.dev = fePkg.scripts.start;
+          fse.writeJsonSync(fePkgPath, fePkg, { spaces: 2 });
+        }
+      }
+    } catch {}
   }
 
   const manifestData = {

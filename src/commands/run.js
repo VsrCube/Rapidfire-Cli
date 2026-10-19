@@ -29,11 +29,22 @@ function handleRun(args = []) {
   console.log('\x1b[36m╚══════════════════════════════════════════════════════════╝\x1b[0m\n');
   console.log(`\x1b[2mTarget Directory:\x1b[0m ${target}\n`);
 
+  let isFastApi = false;
   let backendUrl = null;
   let frontendUrl = null;
 
   if (hasBackend) {
     const backendDir = path.join(target, 'backend');
+    let backendPort = 5000;
+    const backendEnv = path.join(backendDir, '.env');
+    if (fs.existsSync(backendEnv)) {
+      try {
+        const envContent = fs.readFileSync(backendEnv, 'utf8');
+        const match = envContent.match(/^PORT\s*=\s*(\d+)/m);
+        if (match) backendPort = parseInt(match[1], 10);
+      } catch {}
+    }
+
     if (fs.existsSync(path.join(backendDir, 'package.json')) && !fs.existsSync(path.join(backendDir, 'node_modules'))) {
       console.log('\x1b[33m[*] Installing missing backend dependencies (npm install)...\x1b[0m');
       try {
@@ -45,49 +56,52 @@ function handleRun(args = []) {
     }
 
     if (fs.existsSync(path.join(backendDir, 'main.py'))) {
-      console.log('\x1b[32m[*] Launching Python FastAPI backend (Uvicorn on port 8000)...\x1b[0m');
+      isFastApi = true;
+      const port = backendPort !== 5000 ? backendPort : 8000;
+      console.log(`\x1b[32m[*] Launching Python FastAPI backend (Uvicorn on port ${port})...\x1b[0m`);
       const pyCmd = process.platform === 'win32' ? 'python' : 'python3';
-      const beProc = spawn(pyCmd, ['-m', 'uvicorn', 'main:app', '--reload', '--port', '8000'], {
+      const beProc = spawn(pyCmd, ['-m', 'uvicorn', 'main:app', '--reload', '--port', String(port)], {
         cwd: backendDir,
         stdio: 'inherit'
       });
       activeProcesses.push(beProc);
-      backendUrl = 'http://localhost:8000';
+      backendUrl = `http://localhost:${port}`;
     } else if (fs.existsSync(path.join(backendDir, 'server.js'))) {
-      console.log('\x1b[32m[*] Launching Express Node.js backend (Port 5000)...\x1b[0m');
+      console.log(`\x1b[32m[*] Launching Express Node.js backend (Port ${backendPort})...\x1b[0m`);
       const beProc = spawn('node', ['server.js'], {
         cwd: backendDir,
         stdio: 'inherit'
       });
       activeProcesses.push(beProc);
-      backendUrl = 'http://localhost:5000';
+      backendUrl = `http://localhost:${backendPort}`;
     } else if (fs.existsSync(path.join(backendDir, 'manage.py'))) {
-      console.log('\x1b[32m[*] Launching Django backend (Port 8000)...\x1b[0m');
+      const port = backendPort !== 5000 ? backendPort : 8000;
+      console.log(`\x1b[32m[*] Launching Django backend (Port ${port})...\x1b[0m`);
       const pyCmd = process.platform === 'win32' ? 'python' : 'python3';
-      const beProc = spawn(pyCmd, ['manage.py', 'runserver', '8000'], {
+      const beProc = spawn(pyCmd, ['manage.py', 'runserver', String(port)], {
         cwd: backendDir,
         stdio: 'inherit'
       });
       activeProcesses.push(beProc);
-      backendUrl = 'http://localhost:8000';
+      backendUrl = `http://localhost:${port}`;
     } else if (fs.existsSync(path.join(backendDir, 'app.py'))) {
-      console.log('\x1b[32m[*] Launching Python backend (Port 5000)...\x1b[0m');
+      console.log(`\x1b[32m[*] Launching Python backend (Port ${backendPort})...\x1b[0m`);
       const pyCmd = process.platform === 'win32' ? 'python' : 'python3';
       const beProc = spawn(pyCmd, ['app.py'], {
         cwd: backendDir,
         stdio: 'inherit'
       });
       activeProcesses.push(beProc);
-      backendUrl = 'http://localhost:5000';
+      backendUrl = `http://localhost:${backendPort}`;
     } else if (fs.existsSync(path.join(backendDir, 'index.js')) || fs.existsSync(path.join(backendDir, 'app.js'))) {
       const entry = fs.existsSync(path.join(backendDir, 'index.js')) ? 'index.js' : 'app.js';
-      console.log(`\x1b[32m[*] Launching Node.js backend (${entry} on Port 5000)...\x1b[0m`);
+      console.log(`\x1b[32m[*] Launching Node.js backend (${entry} on Port ${backendPort})...\x1b[0m`);
       const beProc = spawn('node', [entry], {
         cwd: backendDir,
         stdio: 'inherit'
       });
       activeProcesses.push(beProc);
-      backendUrl = 'http://localhost:5000';
+      backendUrl = `http://localhost:${backendPort}`;
     } else if (fs.existsSync(path.join(backendDir, 'main.go'))) {
       console.log('\x1b[32m[*] Launching Go backend (Port 8080)...\x1b[0m');
       const beProc = spawn('go', ['run', 'main.go'], {
@@ -184,7 +198,10 @@ function handleRun(args = []) {
   setTimeout(() => {
     console.log(`\n\x1b[32m[OK] Application is live!\x1b[0m`);
     if (frontendUrl) console.log(`  Frontend: \x1b[36m${frontendUrl}\x1b[0m`);
-    if (backendUrl) console.log(`  Backend:  \x1b[36m${backendUrl}\x1b[0m (Docs: \x1b[33m${backendUrl}/docs\x1b[0m)`);
+    if (backendUrl) {
+      const docsMsg = isFastApi ? ` (Docs: \x1b[33m${backendUrl}/docs\x1b[0m)` : '';
+      console.log(`  Backend:  \x1b[36m${backendUrl}\x1b[0m${docsMsg}`);
+    }
     console.log(`\nOpening in browser: \x1b[1m\x1b[36m${primaryUrl}\x1b[0m`);
     console.log(`\x1b[2mPress Ctrl+C to stop all servers.\x1b[0m\n`);
     openBrowser(primaryUrl);
