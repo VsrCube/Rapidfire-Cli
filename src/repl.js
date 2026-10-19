@@ -106,7 +106,7 @@ class RapidfireRepl {
       }
 
       if (chunk) {
-        chunk = chunk.replace(/;\s*echo\s+["']?__RAPIDFIRE_DONE__["']?/g, '');
+        chunk = chunk.replace(/(?:;|\r?\n)?\s*echo\s+["']?__RAPIDFIRE_DONE__["']?\r?\n?/g, '');
       }
 
       let hasSentinel = false;
@@ -225,7 +225,12 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
     this.expectedEcho = line;
     if (this.idleTimer) clearTimeout(this.idleTimer);
 
-    this.shell.write(`${line}; echo "${RAPIDFIRE_DONE_SENTINEL}"`);
+    const eol = this.shell.isPowerShell ? '\r\n' : '\n';
+    if (this.shell.isPowerShell) {
+      this.shell.write(`${line}${eol}echo "${RAPIDFIRE_DONE_SENTINEL}"`);
+    } else {
+      this.shell.write(`${line}; echo "${RAPIDFIRE_DONE_SENTINEL}"`);
+    }
   }
 
   handleCdSync(line) {

@@ -32,6 +32,7 @@ const testScripts = [
   'test/test_dynamic_fullstack.js',
   'test/test_nested_git.js',
   'test/test_run_command.js',
+  'test/test_build_command.js',
   'test/test_repo_memory.js',
   'test/test_explain_markdown_export.js',
   'test/test_overview.js'

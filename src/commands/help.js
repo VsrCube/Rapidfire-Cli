@@ -381,6 +381,7 @@ ${bold}PRODUCTION DEPLOYMENT:${reset}
 ${bold}APPLICATION EXECUTION & RUNNER:${reset}
   ${green}run [folder]${reset}                    Launch microservice dev servers (FastAPI / Express + React / Vue / Svelte)
                                 Aliases: ${green}start${reset}, ${green}serve${reset}. Resolves ports (:8000/:5000 and :3000)
+  ${green}build [folder]${reset}                  Execute production build for frontend or full-stack application
 
 ${bold}SESSION & UTILITY COMMANDS:${reset}
   ${cyan}help [command]${reset}                 Display this command reference or focused help (e.g. "help push")

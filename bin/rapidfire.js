@@ -22,6 +22,12 @@ if (args[0] === 'run' || args[0] === 'start' || args[0] === 'serve') {
   return;
 }
 
+if (args[0] === 'build') {
+  const { handleBuild } = require('../src/commands/build');
+  handleBuild(args.slice(1));
+  return;
+}
+
 if (args[0] === 'explain') {
   const { handleExplain } = require('../src/commands/explain');
   handleExplain(args.slice(1)).then(() => process.exit(0)).catch(() => process.exit(1));

@@ -40,6 +40,16 @@ function matchCommand(line) {
     };
   }
 
+  if (cmd === 'build') {
+    return {
+      name: 'build',
+      run: async () => {
+        const { handleBuild } = require('./build');
+        return handleBuild(tokens.slice(1));
+      }
+    };
+  }
+
   if (cmd === 'help') {
     return {
       name: 'help',

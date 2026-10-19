@@ -85,6 +85,12 @@ async function runTests() {
   assert.strictEqual(promptCount, 8, 'Prompt must be called on empty line Enter');
   assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning must be reset on empty line Enter');
 
+  console.log('[Test 9] Testing shell parser error prompt recovery...');
+  await repl.handleLine('np, run build');
+  await waitForPrompt(9, 4000);
+  assert.strictEqual(promptCount, 9, 'Prompt must return even when command causes a shell parser error');
+  assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning must return to false after parser error');
+
   console.log('✓ All REPL prompt return test scenarios verified successfully!');
 
   repl.shutdown();
