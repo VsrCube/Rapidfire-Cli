@@ -51,6 +51,10 @@ async function runTests() {
   const nodeServer = bpNode.files.find(f => f.filename === 'backend/server.js');
   assert.ok(nodeServer.content.includes('cors('), 'Express server must use cors');
   assert.ok(nodeServer.content.includes('/api/health'), 'Express server must expose /api/health');
+  const bpNoDb = getFallbackBlueprint('solid+fastapi', 'no_db_app');
+  assert.strictEqual(bpNoDb.summary.includes('database'), false, 'Should not mention database when no database is requested');
+  const noDbEnv = bpNoDb.files.find(f => f.filename === 'backend/.env');
+  assert.strictEqual(noDbEnv.content.includes('DATABASE_URL'), false, 'Should not set DATABASE_URL when no database is requested');
   console.log('[OK] Fallback full-stack blueprint provides pre-wired CORS, API client, and database configuration.');
 
   console.log('[Test 3] Testing live non-interactive scaffolding of dynamic full-stack stack...');
