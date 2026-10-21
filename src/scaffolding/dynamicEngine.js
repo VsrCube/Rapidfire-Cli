@@ -5,147 +5,11 @@ const { installPrePushHook } = require('../integrations/gitleaks');
 const { isGhInstalled, isGhAuthenticated, createRepo } = require('../integrations/gh');
 const { run, commandExists } = require('../utils/proc');
 const { getParentGitRepo } = require('../utils/gitContext');
-
-function getFallbackFullstackBlueprint(stack, targetFolder) {
-  const parts = stack.split('+').map(p => p.trim());
-  const fe = parts[0] || 'client';
-  const be = parts[1] || 'server';
-
-  const isPythonBe = be.includes('py') || be.includes('fastapi') || be.includes('flask') || be.includes('django');
-  const backendPort = isPythonBe ? 8000 : 5000;
-
-  const dbInfoHtml = `<p>Connected REST API Architecture</p>`;
-
-  const files = [
-    {
-      filename: 'package.json',
-      content: JSON.stringify({
-        name: targetFolder,
-        version: '0.1.0',
-        private: true,
-        scripts: {
-          start: `node -e "console.log('Run frontend and backend with: rapidfire run ${targetFolder}')"`
-        }
-      }, null, 2)
-    },
-    {
-      filename: 'frontend/package.json',
-      content: JSON.stringify({
-        name: `${targetFolder}-frontend`,
-        version: '0.1.0',
-        private: true,
-        type: 'module',
-        scripts: {
-          dev: 'vite --port 3000',
-          build: 'vite build',
-          preview: 'vite preview'
-        },
-        dependencies: {
-          react: '^18.3.1',
-          'react-dom': '^18.3.1'
-        },
-        devDependencies: {
-          '@vitejs/plugin-react': '^4.3.4',
-          vite: '^5.4.11'
-        }
-      }, null, 2)
-    },
-    {
-      filename: 'frontend/vite.config.js',
-      content: `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\nexport default defineConfig({ plugins: [react()], server: { port: 3000, proxy: { '/api': 'http://localhost:${backendPort}' } } });\n`
-    },
-    {
-      filename: 'frontend/index.html',
-      content: `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${targetFolder} (${fe}+${be})</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>\n`
-    },
-    {
-      filename: 'frontend/.env.example',
-      content: `VITE_API_URL=http://localhost:${backendPort}\n`
-    },
-    {
-      filename: 'frontend/.env',
-      content: `VITE_API_URL=http://localhost:${backendPort}\n`
-    },
-    {
-      filename: 'frontend/src/main.jsx',
-      content: `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport App from './App';\nReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);\n`
-    },
-    {
-      filename: 'frontend/src/App.jsx',
-      content: `import React, { useState } from 'react';\nconst API_URL = import.meta.env.VITE_API_URL || 'http://localhost:${backendPort}';\n\nexport default function App() {\n  const [status, setStatus] = useState(null);\n  const [loading, setLoading] = useState(false);\n\n  const pingBackend = async () => {\n    setLoading(true);\n    try {\n      const res = await fetch(\`\${API_URL}/api/health\`);\n      const data = await res.json();\n      setStatus(data);\n    } catch (err) {\n      setStatus({ error: err.message });\n    } finally {\n      setLoading(false);\n    }\n  };\n\n  return (\n    <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', textAlign: 'center', background: '#0b0f19', color: '#f8fafc', minHeight: '100vh' }}>\n      <h1>RapidFire Full-Stack: ${fe} + ${be}</h1>\n      ${dbInfoHtml}\n      <button onClick={pingBackend} disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>\n        {loading ? 'Connecting...' : 'Test Backend Connection'}\n      </button>\n      {status && (\n        <pre style={{ marginTop: '1.5rem', padding: '1rem', background: '#1e293b', borderRadius: '8px', display: 'inline-block', textAlign: 'left' }}>\n          {JSON.stringify(status, null, 2)}\n        </pre>\n      )}\n    </main>\n  );\n}\n`
-    }
-  ];
-
-  if (isPythonBe) {
-    const healthReturn = `{\n        "status": "online",\n        "service": "${be}",\n        "connected": True\n    }`;
-
-    files.push({
-      filename: 'backend/main.py',
-      content: `from fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\n\napp = FastAPI(title="${targetFolder} API")\n\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],\n    allow_credentials=True,\n    allow_methods=["*"],\n    allow_headers=["*"],\n)\n\n@app.get("/api/health")\ndef health():\n    return ${healthReturn}\n\nif __name__ == "__main__":\n    import uvicorn\n    uvicorn.run(app, host="0.0.0.0", port=${backendPort})\n`
-    });
-    files.push({
-      filename: 'backend/requirements.txt',
-      content: `fastapi>=0.110.0\nuvicorn>=0.28.0\n`
-    });
-  } else {
-    const healthReturn = `{\n    status: 'online',\n    service: '${be}',\n    connected: true\n  }`;
-
-    files.push({
-      filename: 'backend/package.json',
-      content: JSON.stringify({
-        name: `${targetFolder}-backend`,
-        version: '0.1.0',
-        private: true,
-        scripts: {
-          start: 'node server.js',
-          dev: 'node --watch server.js'
-        },
-        dependencies: {
-          express: '^4.19.2',
-          cors: '^2.8.5'
-        }
-      }, null, 2)
-    });
-    files.push({
-      filename: 'backend/server.js',
-      content: `const express = require('express');\nconst cors = require('cors');\nconst app = express();\nconst PORT = process.env.PORT || ${backendPort};\n\napp.use(cors({ origin: 'http://localhost:3000' }));\napp.use(express.json());\n\napp.get('/api/health', (req, res) => {\n  res.json(${healthReturn});\n});\n\napp.listen(PORT, () => {\n  console.log(\`[backend] ${be} server listening on port \${PORT}\`);\n});\n`
-    });
-  }
-
-  const beEnv = `PORT=${backendPort}\n`;
-
-  files.push({
-    filename: 'backend/.env.example',
-    content: beEnv
-  });
-  files.push({
-    filename: 'backend/.env',
-    content: beEnv
-  });
-  files.push({
-    filename: '.gitignore',
-    content: `node_modules/\ndist/\n.env\n*.pyc\n__pycache__/\n`
-  });
-  files.push({
-    filename: 'README.md',
-    content: `# ${targetFolder}\nFull-stack application dynamically scaffolded for \`${stack}\`.\n\n## Running the Full-Stack Application\n\`\`\`bash\nrapidfire run ${targetFolder}\n\`\`\`\n\nOr individually:\n\`\`\`bash\n# Frontend\ncd frontend && npm install && npm run dev\n\n# Backend\ncd backend && npm install && npm start\n\`\`\`\n`
-  });
-
-  const summary = `Full-stack ${fe} + ${be} architecture in '${targetFolder}'`;
-
-  return {
-    summary,
-    ecosystem: isPythonBe ? 'python' : 'node',
-    files
-  };
-}
+const { getFrontendAdapter, hasFrontendAdapter } = require('./adapters/frontend');
+const { getBackendAdapter, hasBackendAdapter } = require('./adapters/backend');
 
 function getFallbackBlueprint(stack, targetFolder) {
   const s = stack.toLowerCase();
-
-  if (s.includes('+')) {
-    return getFallbackFullstackBlueprint(stack, targetFolder);
-  }
 
   if (s.includes('astro')) {
     return {
@@ -340,25 +204,9 @@ async function generateBlueprint(stack, targetFolder) {
 
   try {
     const provider = require('../ai/provider');
-    const isFullstack = stack.includes('+') || ['mern', 'mean', 'mevn', 't3'].some(k => stack.toLowerCase().includes(k));
-
-    let prompt = `You are a software scaffolding engine for RapidFire CLI.
+    const prompt = `You are a software scaffolding engine for RapidFire CLI.
 The user wants to scaffold a new project for framework/stack: "${stack}" in directory "${targetFolder}".
-Generate a complete, minimal, working starter project.`;
-
-    if (isFullstack) {
-      prompt += `
-CRITICAL FULL-STACK CONNECTIVITY REQUIREMENTS:
-1. Architecture: If using distinct frontend and backend technologies (e.g. separated by '+'), structure with "frontend/" and "backend/" subdirectories.
-2. Connectivity:
-   - Frontend must include an API client/fetch call to backend (e.g. /api/health).
-   - Backend must configure CORS allowing http://localhost:3000.
-   - Include .env and .env.example files with API_URL variable.
-   - DO NOT scaffold or configure any database (no SQLite, no PostgreSQL, no MongoDB, no ORMs). Do not include database drivers or connection strings. Focus strictly on frontend UI and backend REST API connectivity.
-3. Execution: Each tier must contain its respective package manifest (package.json, requirements.txt, or go.mod) and runnable scripts. If frontend is React (CRA or Vite), ALWAYS include "public/index.html" (or "index.html" for Vite) with <div id="root"></div> and a "dev" script in package.json.`;
-    }
-
-    prompt += `
+Generate a complete, minimal, working starter project.
 You MUST respond ONLY with valid JSON in this exact schema, without markdown formatting or code blocks:
 {
   "summary": "Brief 1-sentence description of the project blueprint",
@@ -421,7 +269,463 @@ async function promptConfirmation(context, questionText, defaultChoice = 'y') {
   return defaultChoice.toLowerCase().startsWith('y');
 }
 
+function getDynamicFrontendFiles(feName, appName, backendPort = 5000) {
+  const s = feName.toLowerCase();
+  if (s.includes('solid')) {
+    return [
+      {
+        filename: 'package.json',
+        content: JSON.stringify({
+          name: `${appName}-frontend`,
+          version: '0.0.0',
+          type: 'module',
+          scripts: { dev: 'vite', build: 'vite build', preview: 'vite preview' },
+          dependencies: { 'solid-js': '^1.9.0' },
+          devDependencies: { vite: '^5.4.0', 'vite-plugin-solid': '^2.11.0' }
+        }, null, 2)
+      },
+      {
+        filename: 'vite.config.js',
+        content: `import { defineConfig } from 'vite';\nimport solidPlugin from 'vite-plugin-solid';\nexport default defineConfig({ plugins: [solidPlugin()], server: { port: 3000 } });\n`
+      },
+      {
+        filename: 'index.html',
+        content: `<!DOCTYPE html><html lang="en"><head><title>${appName} Frontend</title></head><body><div id="root"></div><script type="module" src="/src/index.jsx"></script></body></html>\n`
+      },
+      {
+        filename: '.env.example',
+        content: `VITE_API_URL=http://localhost:${backendPort}\n`
+      },
+      {
+        filename: 'src/index.jsx',
+        content: `import { render } from 'solid-js/web';\nimport App from './App';\nrender(() => <App />, document.getElementById('root'));\n`
+      },
+      {
+        filename: 'src/App.jsx',
+        content: `import { createSignal } from 'solid-js';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:${backendPort}';
+
+export default function App() {
+  const [count, setCount] = createSignal(0);
+  const [apiResponse, setApiResponse] = createSignal(null);
+  const [loading, setLoading] = createSignal(false);
+
+  const testBackendApi = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(API_URL + '/api/health');
+      const data = await res.json();
+      setApiResponse({ status: 'success', data });
+    } catch (err) {
+      setApiResponse({ status: 'offline', error: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: '640px', margin: '4rem auto', background: '#131b2e', border: '1px solid #1e293b', borderRadius: '16px', padding: '2.5rem', textAlign: 'center', color: '#f8fafc', fontFamily: 'system-ui' }}>
+      <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem', color: '#38bdf8' }}>RapidFire ${feName} Frontend</h1>
+      <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '2rem' }}>Connected to Backend API (${backendPort}) with CORS pre-configured.</p>
+      <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
+        <button style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: '#2563eb', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }} onClick={() => setCount(c => c + 1)}>
+          State Counter: {count()}
+        </button>
+        <button style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: '#059669', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }} onClick={testBackendApi} disabled={loading()}>
+          {loading() ? 'Pinging Backend...' : 'Test Backend API (/api/health)'}
+        </button>
+      </div>
+      {apiResponse() && (
+        <div style={{ marginTop: '1.5rem', padding: '1rem', borderRadius: '8px', background: apiResponse().status === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: '1px solid ' + (apiResponse().status === 'success' ? '#10b981' : '#ef4444'), textAlign: 'left', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+          <div style={{ fontWeight: 'bold', color: apiResponse().status === 'success' ? '#34d399' : '#f87171' }}>
+            {apiResponse().status === 'success' ? '[200 OK] Backend Connected!' : '[OFFLINE] Backend Server Offline'}
+          </div>
+          <pre style={{ margin: '0.5rem 0 0 0', color: '#e2e8f0' }}>{JSON.stringify(apiResponse().data || { error: apiResponse().error }, null, 2)}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+`
+      },
+      {
+        filename: '.gitignore',
+        content: `node_modules/\ndist/\n.env\n`
+      },
+      {
+        filename: 'README.md',
+        content: `# ${appName} Frontend (${feName})\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`
+      }
+    ];
+  }
+
+  return [
+    {
+      filename: 'package.json',
+      content: JSON.stringify({
+        name: `${appName}-frontend`,
+        version: '0.0.0',
+        type: 'module',
+        scripts: { dev: 'vite', build: 'vite build', preview: 'vite preview' },
+        devDependencies: { vite: '^5.4.0' }
+      }, null, 2)
+    },
+    {
+      filename: 'vite.config.js',
+      content: `import { defineConfig } from 'vite';\nexport default defineConfig({ server: { port: 3000 } });\n`
+    },
+    {
+      filename: 'index.html',
+      content: `<!DOCTYPE html><html lang="en"><head><title>${appName} Frontend</title></head><body><div id="app"></div><script type="module" src="/src/main.js"></script></body></html>\n`
+    },
+    {
+      filename: '.env.example',
+      content: `VITE_API_URL=http://localhost:${backendPort}\n`
+    },
+    {
+      filename: 'src/main.js',
+      content: `const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:${backendPort}';
+const app = document.getElementById('app');
+app.innerHTML = \`
+  <div style="max-width:640px; margin:4rem auto; background:#131b2e; border:1px solid #1e293b; border-radius:16px; padding:2.5rem; text-align:center; color:#f8fafc; font-family:system-ui;">
+    <h1 style="color:#38bdf8;">RapidFire ${feName} Frontend</h1>
+    <p style="color:#94a3b8; font-size:0.9rem;">Connected to Backend API (${backendPort})</p>
+    <button id="pingBtn" style="padding:0.75rem 1.5rem; border-radius:8px; background:#059669; color:#fff; border:none; font-weight:600; cursor:pointer;">Test Backend API</button>
+    <div id="output" style="margin-top:1.5rem; text-align:left; font-family:monospace; font-size:0.85rem;"></div>
+  </div>
+\`;
+document.getElementById('pingBtn').addEventListener('click', async () => {
+  const out = document.getElementById('output');
+  out.textContent = 'Pinging...';
+  try {
+    const res = await fetch(API_URL + '/api/health');
+    const data = await res.json();
+    out.style.color = '#34d399';
+    out.textContent = JSON.stringify(data, null, 2);
+  } catch (err) {
+    out.style.color = '#f87171';
+    out.textContent = 'Backend offline: ' + err.message;
+  }
+});
+`
+    },
+    {
+      filename: '.gitignore',
+      content: `node_modules/\ndist/\n.env\n`
+    },
+    {
+      filename: 'README.md',
+      content: `# ${appName} Frontend (${feName})\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`
+    }
+  ];
+}
+
+function getDynamicBackendFiles(beName, appName, backendPort = 5000) {
+  const s = beName.toLowerCase();
+  if (s.includes('hono')) {
+    return [
+      {
+        filename: 'package.json',
+        content: JSON.stringify({
+          name: `${appName}-backend`,
+          version: '1.0.0',
+          private: true,
+          main: 'index.js',
+          scripts: { start: 'node index.js', dev: 'node --watch index.js' },
+          dependencies: {
+            hono: '^4.6.0',
+            '@hono/node-server': '^1.13.0'
+          }
+        }, null, 2)
+      },
+      {
+        filename: 'index.js',
+        content: `const { serve } = require('@hono/node-server');
+const { Hono } = require('hono');
+const { cors } = require('hono/cors');
+
+const app = new Hono();
+app.use('*', cors());
+
+app.get('/api/health', (c) => {
+  return c.json({ status: 'ok', message: 'Hono backend is running', port: ${backendPort} });
+});
+
+app.get('/', (c) => {
+  return c.json({ message: 'Welcome to Hono backend API!', docs: '/api/health' });
+});
+
+serve({ fetch: app.fetch, port: ${backendPort} }, (info) => {
+  console.log(\`[rapidfire] Hono backend listening on http://localhost:\${info.port}\`);
+});
+`
+      },
+      {
+        filename: '.gitignore',
+        content: `node_modules/\n.env\n*.log\n`
+      },
+      {
+        filename: 'README.md',
+        content: `# ${appName} Backend (${beName})\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`
+      }
+    ];
+  }
+
+  if (s.includes('go')) {
+    return [
+      {
+        filename: 'go.mod',
+        content: `module ${appName}-backend\n\ngo 1.21\n`
+      },
+      {
+        filename: 'main.go',
+        content: `package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
+
+type HealthResponse struct {
+	Status  string \`json:"status"\`
+	Message string \`json:"message"\`
+	Port    int    \`json:"port"\`
+}
+
+func enableCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next(w, r)
+	}
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	resp := HealthResponse{Status: "ok", Message: "Go backend is running", Port: ${backendPort}}
+	json.NewEncoder(w).Encode(resp)
+}
+
+func main() {
+	http.HandleFunc("/api/health", enableCORS(healthHandler))
+	fmt.Printf("[rapidfire] Go backend listening on port %d\\n", ${backendPort})
+	http.ListenAndServe(fmt.Sprintf(":%d", ${backendPort}), nil)
+}
+`
+      },
+      {
+        filename: '.gitignore',
+        content: `target/\n*.exe\n.env\n`
+      },
+      {
+        filename: 'README.md',
+        content: `# ${appName} Backend (${beName})\n\`\`\`bash\ngo run .\n\`\`\`\n`
+      }
+    ];
+  }
+
+  return [
+    {
+      filename: 'package.json',
+      content: JSON.stringify({
+        name: `${appName}-backend`,
+        version: '1.0.0',
+        private: true,
+        main: 'server.js',
+        scripts: { start: 'node server.js', dev: 'node --watch server.js' },
+        dependencies: {
+          express: '^4.21.2',
+          cors: '^2.8.5'
+        }
+      }, null, 2)
+    },
+    {
+      filename: 'server.js',
+      content: `const express = require('express');
+const cors = require('cors');
+
+const app = express();
+const PORT = process.env.PORT || ${backendPort};
+
+app.use(cors());
+app.use(express.json());
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: '${beName} backend is running', port: PORT });
+});
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Welcome to ${beName} backend API!', docs: '/api/health' });
+});
+
+app.listen(PORT, () => {
+  console.log(\`[rapidfire] Backend server running at http://localhost:\${PORT}\`);
+});
+`
+    },
+    {
+      filename: '.gitignore',
+      content: `node_modules/\n.env\n*.log\n`
+    },
+    {
+      filename: 'README.md',
+      content: `# ${appName} Backend (${beName})\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`
+    }
+  ];
+}
+
+async function scaffoldDynamicFullstack(projectPath, targetFolder, plan, context = {}) {
+  const frontend = plan.frontend;
+  const backend = plan.backend;
+  const backendPort = ['fastapi', 'django'].includes(backend) ? 8000 : 5000;
+
+  console.log(`\n\x1b[36m[rapidfire-dynamic] Scaffolding connected full-stack pairing: ${frontend} (frontend) + ${backend} (backend)...\x1b[0m`);
+
+  fse.ensureDirSync(projectPath);
+  const frontendDir = path.join(projectPath, 'frontend');
+  const backendDir = path.join(projectPath, 'backend');
+  fse.ensureDirSync(frontendDir);
+  fse.ensureDirSync(backendDir);
+
+  const confirmPrompt = `\n\x1b[1m\x1b[33mDo you want to scaffold this connected full-stack '${frontend}+${backend}' project now? (Y/N):\x1b[0m `;
+  const approved = await promptConfirmation(context, confirmPrompt);
+
+  if (!approved) {
+    console.log(`\x1b[33m[rapidfire-dynamic] Scaffolding aborted by user. No files written.\x1b[0m`);
+    try {
+      if (fse.existsSync(projectPath) && fse.readdirSync(projectPath).length === 0) {
+        fse.removeSync(projectPath);
+      }
+    } catch {}
+    return { success: false, aborted: true };
+  }
+
+  console.log(`\n[rapidfire-dynamic] Writing connected full-stack files in ${targetFolder}...`);
+
+  if (plan.knownFrontend && hasFrontendAdapter(frontend)) {
+    const adapter = getFrontendAdapter(frontend);
+    adapter(frontendDir, { port: 3000, apiPort: backendPort });
+  } else {
+    const feFiles = getDynamicFrontendFiles(frontend, targetFolder, backendPort);
+    for (const file of feFiles) {
+      const fullPath = path.join(frontendDir, file.filename);
+      fse.ensureDirSync(path.dirname(fullPath));
+      fse.writeFileSync(fullPath, file.content, 'utf8');
+    }
+  }
+
+  if (plan.knownBackend && hasBackendAdapter(backend)) {
+    const adapter = getBackendAdapter(backend);
+    adapter(backendDir, targetFolder, { port: backendPort });
+  } else {
+    const beFiles = getDynamicBackendFiles(backend, targetFolder, backendPort);
+    for (const file of beFiles) {
+      const fullPath = path.join(backendDir, file.filename);
+      fse.ensureDirSync(path.dirname(fullPath));
+      fse.writeFileSync(fullPath, file.content, 'utf8');
+    }
+  }
+
+  fse.writeFileSync(
+    path.join(projectPath, '.gitignore'),
+    `node_modules/\ndist/\n.env\n__pycache__/\n*.pyc\nvenv/\n.venv/\ntarget/\n*.log\n`,
+    'utf8'
+  );
+
+const readmeContent = `# ${targetFolder}
+
+Scaffolded with RapidFire CLI (\`setup ${frontend}+${backend}\`).
+
+## Architecture
+Dual-tier microservice architecture with connected frontend and backend.
+
+## Frontend (${frontend.toUpperCase()})
+\`\`\`bash
+cd frontend
+npm run dev
+\`\`\`
+
+## Backend (${backend.toUpperCase()})
+\`\`\`bash
+cd backend
+\`\`\`
+
+## Full-Stack Execution
+To launch both frontend and backend concurrently in 1 command:
+\`\`\`bash
+run ${targetFolder}
+\`\`\`
+`;
+  fse.writeFileSync(path.join(projectPath, 'README.md'), readmeContent, 'utf8');
+
+  const manifestData = {
+    schemaVersion: 2,
+    name: targetFolder,
+    recipe: `${frontend}+${backend}`,
+    frontend,
+    backend,
+    isFullstack: true,
+    generationMode: 'dynamic',
+    createdAt: new Date().toISOString(),
+    rapidfireVersion: require('../../package.json').version || '0.1.32'
+  };
+  fse.writeJsonSync(path.join(projectPath, '.rapidfire.json'), manifestData, { spaces: 2 });
+
+  try {
+    const parentRepo = getParentGitRepo(projectPath);
+    if (parentRepo) {
+      console.log(`\x1b[33m[rapidfire] Detected parent Git repository at '${parentRepo}'. Skipping nested git init.\x1b[0m`);
+      try { installPrePushHook(parentRepo); } catch {}
+    } else {
+      const gitPrompt = `\nDo you want to initialize a local Git repository for '${targetFolder}'? (Y/N): `;
+      const isInteractive = Boolean(context && (typeof context.ask === 'function' || context.rl));
+      const defaultChoice = isInteractive ? 'n' : (process.env.RAPIDFIRE_AUTO_GIT === '0' ? 'n' : 'y');
+      const shouldInit = await promptConfirmation(context, gitPrompt, defaultChoice);
+
+      if (shouldInit) {
+        if (!fse.existsSync(path.join(projectPath, '.git'))) {
+          try {
+            run('git init -b main', { cwd: projectPath, stdio: 'ignore' });
+          } catch {
+            run('git init', { cwd: projectPath, stdio: 'ignore' });
+          }
+          console.log('[rapidfire] Initialized local git repository.');
+        }
+        const hookResult = installPrePushHook(projectPath);
+        if (hookResult.success) {
+          console.log('\x1b[32m[rapidfire-security] Installed gitleaks pre-push hook in .git/hooks/pre-push\x1b[0m');
+        }
+      } else {
+        console.log('[rapidfire] Skipped local git initialization.');
+      }
+    }
+  } catch (err) {
+    console.warn('[rapidfire] Git initialization notice:', err.message);
+  }
+
+  console.log(`\n\x1b[32m╔════════════════════════════════════════════════════╗\x1b[0m`);
+  console.log(`\x1b[32m║  Project '${targetFolder}' (${frontend}+${backend}) ready!  ║\x1b[0m`);
+  console.log(`\x1b[32m╚════════════════════════════════════════════════════╝\x1b[0m\n`);
+  console.log(`Next steps:`);
+  console.log(`  \x1b[1m\x1b[32m• Run full-stack application now:\x1b[0m run ${targetFolder}`);
+  console.log(`  \x1b[36m• Inspect code & architecture:\x1b[0m    explain ${targetFolder}`);
+  console.log(`  \x1b[36m• Navigate into folder:\x1b[0m           cd ${targetFolder}`);
+  console.log(`  \x1b[35m• Save as preset anytime:\x1b[0m         save preset <name> ${targetFolder}`);
+
+  return { success: true, manifest: manifestData };
+}
+
 async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context = {}) {
+  if (plan && (plan.isFullstackPairing || (plan.frontend && plan.backend))) {
+    return await scaffoldDynamicFullstack(projectPath, targetFolder, plan, context);
+  }
+
   const stack = plan.stack;
   fse.ensureDirSync(projectPath);
 
@@ -476,29 +780,6 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     fse.writeFileSync(path.join(projectPath, '.gitignore'), defaultIgnore, 'utf8');
   }
 
-  const frontendDir = fse.existsSync(path.join(projectPath, 'frontend'))
-    ? path.join(projectPath, 'frontend')
-    : projectPath;
-  const fePkgPath = path.join(frontendDir, 'package.json');
-  if (fse.existsSync(fePkgPath)) {
-    try {
-      const fePkg = fse.readJsonSync(fePkgPath);
-      const isCra = Boolean((fePkg.dependencies && fePkg.dependencies['react-scripts']) ||
-                    (fePkg.scripts && fePkg.scripts.start && fePkg.scripts.start.includes('react-scripts')));
-      if (isCra) {
-        const craHtmlPath = path.join(frontendDir, 'public', 'index.html');
-        if (!fse.existsSync(craHtmlPath)) {
-          fse.ensureDirSync(path.join(frontendDir, 'public'));
-          fse.writeFileSync(craHtmlPath, `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <meta charset="utf-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1" />\n    <title>${targetFolder}</title>\n  </head>\n  <body>\n    <noscript>You need to enable JavaScript to run this app.</noscript>\n    <div id="root"></div>\n  </body>\n</html>\n`, 'utf8');
-        }
-        if (!fePkg.scripts.dev && fePkg.scripts.start) {
-          fePkg.scripts.dev = fePkg.scripts.start;
-          fse.writeJsonSync(fePkgPath, fePkg, { spaces: 2 });
-        }
-      }
-    } catch {}
-  }
-
   const manifestData = {
     schemaVersion: 2,
     name: targetFolder,
@@ -506,7 +787,7 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     generationMode: 'dynamic',
     ecosystem: blueprint.ecosystem || 'node',
     createdAt: new Date().toISOString(),
-    rapidfireVersion: require('../../package.json').version || '0.1.23'
+    rapidfireVersion: require('../../package.json').version || '0.1.32'
   };
   fse.writeJsonSync(path.join(projectPath, '.rapidfire.json'), manifestData, { spaces: 2 });
 
@@ -542,25 +823,15 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     console.warn('[rapidfire] Git initialization notice:', err.message);
   }
 
-  if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1' && commandExists('npm')) {
-    const pkgLocations = [];
-    if (fse.existsSync(path.join(projectPath, 'package.json'))) pkgLocations.push(projectPath);
-    if (fse.existsSync(path.join(projectPath, 'frontend', 'package.json'))) pkgLocations.push(path.join(projectPath, 'frontend'));
-    if (fse.existsSync(path.join(projectPath, 'backend', 'package.json'))) pkgLocations.push(path.join(projectPath, 'backend'));
-
-    if (pkgLocations.length > 0) {
-      const installPrompt = `\nDo you want to run 'npm install' to install dependencies now? (Y/N): `;
-      const shouldInstall = await promptConfirmation(context, installPrompt, 'y');
-      if (shouldInstall) {
-        for (const loc of pkgLocations) {
-          const relName = path.relative(projectPath, loc) || targetFolder;
-          console.log(`[rapidfire] Installing dependencies in ${relName}...`);
-          try {
-            run('npm install', { cwd: loc, stdio: 'inherit' });
-          } catch (err) {
-            console.warn(`\x1b[33m[rapidfire] npm install notice for ${relName}:\x1b[0m`, err.message);
-          }
-        }
+  if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1' && blueprint.ecosystem === 'node' && fse.existsSync(path.join(projectPath, 'package.json')) && commandExists('npm')) {
+    const installPrompt = `\nDo you want to run 'npm install' now? (Y/N): `;
+    const shouldInstall = await promptConfirmation(context, installPrompt, 'y');
+    if (shouldInstall) {
+      console.log('[rapidfire] Installing dependencies with npm...');
+      try {
+        run('npm install', { cwd: projectPath, stdio: 'inherit' });
+      } catch (err) {
+        console.warn('\x1b[33m[rapidfire] npm install notice:\x1b[0m', err.message);
       }
     }
   }
@@ -594,5 +865,8 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
 module.exports = {
   getFallbackBlueprint,
   generateBlueprint,
+  getDynamicFrontendFiles,
+  getDynamicBackendFiles,
+  scaffoldDynamicFullstack,
   scaffoldDynamicFramework
 };

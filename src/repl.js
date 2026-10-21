@@ -15,7 +15,6 @@ class RapidfireRepl {
     this.rl = null;
     this.isPassthroughRunning = false;
     this.idleTimer = null;
-    this.parserErrorTimer = null;
     this.sessionCommands = [];
   }
 
@@ -107,24 +106,13 @@ class RapidfireRepl {
       }
 
       if (chunk) {
-        chunk = chunk.replace(/(?:;|\r?\n)?\s*echo\s+["']?__RAPIDFIRE_DONE__["']?\r?\n?/g, '');
+        chunk = chunk.replace(/;\s*echo\s+["']?__RAPIDFIRE_DONE__["']?/g, '');
       }
 
       let hasSentinel = false;
       if (chunk && chunk.includes(RAPIDFIRE_DONE_SENTINEL)) {
         hasSentinel = true;
         chunk = chunk.replace(new RegExp(RAPIDFIRE_DONE_SENTINEL + '(\\r?\\n|\\s)*', 'g'), '');
-      }
-
-      if (chunk && /ParserError:\s*/i.test(chunk)) {
-        if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
-        this.parserErrorTimer = setTimeout(() => {
-          if (this.isPassthroughRunning) {
-            this.isPassthroughRunning = false;
-            this.expectedEcho = null;
-            this.prompt();
-          }
-        }, 120);
       }
 
       if (this.expectedEcho && chunk) {
@@ -146,7 +134,6 @@ class RapidfireRepl {
 
       if (hasSentinel) {
         if (this.idleTimer) clearTimeout(this.idleTimer);
-        if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
         this.isPassthroughRunning = false;
         this.expectedEcho = null;
         this.prompt();
@@ -163,21 +150,11 @@ class RapidfireRepl {
     });
 
     this.rl.on('SIGINT', () => {
-      try {
-        const { activeProcesses, stopActiveProcesses } = require('./commands/run');
-        if (activeProcesses && activeProcesses.length > 0) {
-          stopActiveProcesses();
-          console.log('\n\x1b[33m[rapidfire] Stopped application servers.\x1b[0m');
-          this.prompt();
-          return;
-        }
-      } catch {}
       if (this.isPassthroughRunning) {
         this.shell.write('\x03');
         this.isPassthroughRunning = false;
         this.expectedEcho = null;
         if (this.idleTimer) clearTimeout(this.idleTimer);
-        if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
         this.prompt();
       } else {
         this.shutdown();
@@ -213,7 +190,6 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
       this.isPassthroughRunning = false;
       this.expectedEcho = null;
       if (this.idleTimer) clearTimeout(this.idleTimer);
-      if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
       this.prompt();
       return;
     }
@@ -248,7 +224,6 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
     this.isPassthroughRunning = true;
     this.expectedEcho = line;
     if (this.idleTimer) clearTimeout(this.idleTimer);
-    if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
 
     this.shell.write(`${line}; echo "${RAPIDFIRE_DONE_SENTINEL}"`);
   }
@@ -287,11 +262,6 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
   shutdown() {
     console.log('\n\x1b[33m[rapidfire] Exiting....\x1b[0m');
     if (this.idleTimer) clearTimeout(this.idleTimer);
-    if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
-    try {
-      const { stopActiveProcesses } = require('./commands/run');
-      stopActiveProcesses();
-    } catch { }
     try {
       saveSessionHistory(this.sessionCommands);
     } catch { }

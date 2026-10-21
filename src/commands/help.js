@@ -3,9 +3,9 @@ const path = require('path');
 function getVersion() {
   try {
     const pkg = require('../../package.json');
-    return pkg.version || '0.1.32';
+    return pkg.version || '0.1.35';
   } catch {
-    return '0.1.32';
+    return '0.1.35';
   }
 }
 
@@ -22,7 +22,6 @@ function showHelp(args = []) {
   const rawTopic = tokens[0] ? tokens[0].replace(/[<>]/g, '').trim().toLowerCase() : '';
   const version = getVersion();
 
-  // Focused topic-level help
   if (rawTopic) {
     if (rawTopic === 'setup' || rawTopic === 'recipe' || rawTopic === 'recipes' || rawTopic === 'scaffold') {
       console.log(`
@@ -36,7 +35,7 @@ ${bold}DESCRIPTION:${reset}
 
 ${bold}CONNECTED FULL-STACK RECIPES (Frontend + Backend):${reset}
   ${green}setup react+fastapi <folder>${reset}    React (Vite) + FastAPI (Async Python)
-  ${green}setup react+django <folder>${reset}     React (Vite) + Django REST backend
+  ${green}setup react+django <folder>${reset}     React (Vite) + Django REST backend with SQLite
   ${green}setup react+node <folder>${reset}       React (Vite) + Express Node.js backend
   ${green}setup react+flask <folder>${reset}      React (Vite) + Flask Python backend
   ${green}setup vue+fastapi <folder>${reset}      Vue 3 (Vite) + FastAPI (Async Python)
@@ -49,12 +48,11 @@ ${bold}STANDALONE FRONTENDS & BACKENDS:${reset}
   ${green}setup vue <folder>${reset}             Standalone Vue 3 (Vite) SPA
   ${green}setup svelte <folder>${reset}          Standalone Svelte (Vite) SPA
   ${green}setup fastapi <folder>${reset}          Standalone high-performance FastAPI backend
-  ${green}setup django <folder>${reset}           Standalone Django backend
+  ${green}setup django <folder>${reset}           Standalone Django backend with SQLite
 
 ${bold}DYNAMIC & COMPOSED COMPOSITION:${reset}
-  ${green}setup <fe>+<be> <folder>${reset}        Arbitrary stack pairings (e.g. svelte+fastapi, vue+flask)
+  ${green}setup <fe>+<be> <folder>${reset}        Arbitrary stack pairings with auto-connected frontend and backend
   ${green}setup <unknown> <folder>${reset}        Dynamically scaffold any framework via AI/heuristic fallback
-                                 (e.g. "setup astro myapp", "setup solid app", "setup nextjs web")
 
 ${bold}INTERACTIVE WIZARD:${reset}
   ${green}init [rapidfire]${reset}               Interactive scaffolding wizard with step-by-step prompts
@@ -120,7 +118,8 @@ ${bold}MODES & OUTPUTS:${reset}
   ${magenta}overview [folder]${reset}             Generates standard architecture documentation
                                 Exports to: ${bold}md/overview.md${reset}
                                 Sections: Agenda, Use Cases, Key Features, Folder Architecture,
-                                Pipeline Flowcharts, Module Details, Tech Stack, Conclusion.
+                                Pipeline Flowcharts, Module Details, Tech Stack, Security,
+                                Conclusion, Things to Work On / Fixes.
 
   ${magenta}overview --critic [folder]${reset}    Executes comprehensive architectural critique & audit
                                 Exports to: ${bold}md/overview_critic.md${reset}
@@ -195,12 +194,12 @@ ${bold}EXAMPLES:${reset}
     if (rawTopic === 'preset' || rawTopic === 'presets') {
       console.log(`
 ${bold}${cyan}╔══════════════════════════════════════════════════════════════════╗
-║             RAPIDFIRE WORKSPACE PRESETS & PORTABILITY            ║
+║                   RAPIDFIRE WORKSPACE PRESETS                    ║
 ╚══════════════════════════════════════════════════════════════════╝${reset}
 
 ${bold}DESCRIPTION:${reset}
   Serialize custom project structures, boilerplates, and configuration files into
-  reusable, portable JSON presets stored in ~/.rapidfire/presets/.
+  reusable JSON presets stored in ~/.rapidfire/presets/.
 
 ${bold}COMMAND SYNTAX:${reset}
   ${yellow}save preset <name> [folder]${reset}    Serialize project tree and manifest into preset
@@ -303,7 +302,6 @@ ${bold}AVAILABLE TOPICS:${reset}
     }
   }
 
-  // Master, comprehensive manual
   console.log(`
 ${bold}${cyan}╔══════════════════════════════════════════════════════════════════╗
 ║                     RAPIDFIRE CLI MANUAL                         ║
@@ -314,7 +312,7 @@ ${bold}${cyan}╔═════════════════════
 ${bold}PROJECT SCAFFOLDING RECIPES (7 FRAMEWORKS / 13 OPTIONS):${reset}
   ${cyan}Connected Full-Stack Recipes:${reset}
     ${green}setup react+fastapi <folder>${reset}   React (Vite) + FastAPI (Async Python)
-    ${green}setup react+django <folder>${reset}    React (Vite) + Django REST backend
+    ${green}setup react+django <folder>${reset}    React (Vite) + Django REST backend with SQLite
     ${green}setup react+node <folder>${reset}      React (Vite) + Express Node.js backend
     ${green}setup react+flask <folder>${reset}     React (Vite) + Flask Python backend
     ${green}setup vue+fastapi <folder>${reset}     Vue 3 (Vite) + FastAPI (Async Python)
@@ -329,18 +327,17 @@ ${bold}PROJECT SCAFFOLDING RECIPES (7 FRAMEWORKS / 13 OPTIONS):${reset}
 
   ${cyan}Standalone Backends:${reset}
     ${green}setup fastapi <folder>${reset}         Standalone high-performance FastAPI backend
-    ${green}setup django <folder>${reset}          Standalone Django backend
+    ${green}setup django <folder>${reset}          Standalone Django backend with SQLite
 
   ${cyan}Dynamic & Composed Framework Scaffolding:${reset}
-    ${green}setup <fe>+<be> <folder>${reset}       Arbitrary stack combinations (e.g. svelte+fastapi, vue+flask)
+    ${green}setup <fe>+<be> <folder>${reset}       Arbitrary connected full-stack combinations
     ${green}setup <unknown> <folder>${reset}       Dynamically scaffold any framework via AI/heuristic fallback
-                                  (e.g. astro, solid, nextjs, nestjs, hono, express)
 
   ${cyan}Initialization:${reset}
     ${green}init [rapidfire]${reset}              Interactive scaffolding guide & prompt wizard
 
 ${bold}AI CODE GENERATION & ARCHITECTURE:${reset}
-  ${magenta}overview [--critic] [dir]${reset}     Living repo architecture overview (exports md/overview.md)
+  ${magenta}overview [--critic] [dir]${reset}     Living repo architecture & Security overview (exports md/overview.md)
                                 (--critic audits pros/cons, flaws, & security to md/overview_critic.md)
   ${magenta}explain [file|folder]${reset}         Analyze codebase architecture, folder tree, or source file role
                                 (exports formatted report to md/explanation.md)
@@ -381,7 +378,6 @@ ${bold}PRODUCTION DEPLOYMENT:${reset}
 ${bold}APPLICATION EXECUTION & RUNNER:${reset}
   ${green}run [folder]${reset}                    Launch microservice dev servers (FastAPI / Express + React / Vue / Svelte)
                                 Aliases: ${green}start${reset}, ${green}serve${reset}. Resolves ports (:8000/:5000 and :3000)
-  ${green}build [folder]${reset}                  Execute production build for frontend or full-stack application
 
 ${bold}SESSION & UTILITY COMMANDS:${reset}
   ${cyan}help [command]${reset}                 Display this command reference or focused help (e.g. "help push")

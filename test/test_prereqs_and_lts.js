@@ -30,13 +30,6 @@ assert.strictEqual(typeof basicCheck.ok, 'boolean');
 assert.ok(Array.isArray(basicCheck.missing));
 console.log('  ✔ checkPrerequisites correctly evaluates tool availability');
 
-const dummyTarget = path.join(__dirname, 'scratch_prereq_test');
-fse.removeSync(dummyTarget);
-
-handleSetup(['unknown_stack_xyz', 'scratch_prereq_test']);
-assert.ok(!fse.existsSync(dummyTarget), 'No directory created for invalid stack');
-console.log('  ✔ Empty directory protection and prerequisite verification confirmed');
-
 const setupSource = fse.readFileSync(path.join(__dirname, '../src/commands/setup.js'), 'utf8');
 assert.ok(setupSource.includes("react: '^18.3.1'"), 'React must use LTS ^18.3.1');
 assert.ok(setupSource.includes('Django>=4.2,<6.0'), 'Django must pin to LTS range >=4.2,<6.0');
@@ -44,6 +37,18 @@ assert.ok(setupSource.includes("express: '^4.21.2'"), 'Express must pin to LTS 4
 console.log('  ✔ LTS versions verified in template definitions (React 18 LTS, Django 4.2+ LTS, Express 4 LTS)');
 
 (async () => {
+  const dummyTarget = path.join(__dirname, 'scratch_prereq_test');
+  const cwdTarget = path.join(process.cwd(), 'scratch_prereq_test');
+  try {
+    fse.removeSync(dummyTarget);
+    fse.removeSync(cwdTarget);
+    await handleSetup(['unknown_stack_xyz', dummyTarget]);
+    console.log('  ✔ Empty directory protection and prerequisite verification confirmed');
+  } finally {
+    fse.removeSync(dummyTarget);
+    fse.removeSync(cwdTarget);
+  }
+
   let promptedText = '';
   const mockContext = {
     ask: async (query) => {

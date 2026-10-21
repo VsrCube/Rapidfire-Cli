@@ -22,12 +22,6 @@ if (args[0] === 'run' || args[0] === 'start' || args[0] === 'serve') {
   return;
 }
 
-if (args[0] === 'build') {
-  const { handleBuild } = require('../src/commands/build');
-  handleBuild(args.slice(1));
-  return;
-}
-
 if (args[0] === 'explain') {
   const { handleExplain } = require('../src/commands/explain');
   handleExplain(args.slice(1)).then(() => process.exit(0)).catch(() => process.exit(1));
@@ -37,48 +31,6 @@ if (args[0] === 'explain') {
 if (args[0] === 'overview') {
   const { handleOverview } = require('../src/commands/overview');
   handleOverview(args.slice(1)).then(() => process.exit(0)).catch(() => process.exit(1));
-  return;
-}
-
-if (args[0] === 'setup') {
-  const { handleSetup } = require('../src/commands/setup');
-  handleSetup(args.slice(1)).then(() => process.exit(0)).catch(() => process.exit(1));
-  return;
-}
-
-if (args[0] === 'presets' || (args[0] === 'list' && args[1] === 'presets')) {
-  const { handleListPresets } = require('../src/commands/preset');
-  handleListPresets();
-  process.exit(0);
-}
-
-if (args[0] === 'save' && args[1] === 'preset') {
-  const { handleSavePreset } = require('../src/commands/preset');
-  handleSavePreset(args.slice(2));
-  process.exit(0);
-}
-
-if (args[0] === 'load' && args[1] === 'preset') {
-  const { handleLoadPreset } = require('../src/commands/preset');
-  handleLoadPreset(args.slice(2));
-  process.exit(0);
-}
-
-if (args[0] === 'key') {
-  const { handleKey } = require('../src/commands/key');
-  handleKey(args.slice(1));
-  process.exit(0);
-}
-
-if (args[0] === 'suggest') {
-  const { handleSuggest } = require('../src/commands/suggest');
-  handleSuggest(args.slice(1)).then(() => process.exit(0)).catch(() => process.exit(1));
-  return;
-}
-
-if (args[0] === 'tell') {
-  const { handleTell } = require('../src/commands/tell');
-  handleTell(args.slice(1)).then(() => process.exit(0)).catch(() => process.exit(1));
   return;
 }
 

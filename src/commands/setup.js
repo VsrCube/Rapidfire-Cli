@@ -475,7 +475,7 @@ async function handleSetup(args, context = {}) {
     console.log('Dynamic & custom framework scaffolding:');
     console.log('  • setup <unknown> <folder>      (Dynamic AI scaffolding: e.g. astro, solid, nextjs, nestjs)');
     console.log('  • setup <fe>+<be> <folder>      (Composed arbitrary pairings: e.g. svelte+fastapi, vue+flask)');
-    console.log('  • setup <stack> <folder> --dynamic (Non-interactive dynamic scaffolding)');
+    console.log('  • setup <stack> <folder>        (Auto-detects dynamic frameworks & fullstack pairings)');
     return;
   }
 
@@ -508,35 +508,8 @@ async function handleSetup(args, context = {}) {
   }
 
   if (plan.tier === 'DYNAMIC') {
-    const hasDynamicFlag = args.some(
-      (a) => a.toLowerCase() === '--dynamic' || a.toLowerCase() === '--resolve' || a.toLowerCase() === 'dynamic'
-    );
-    const autoDynamic = Boolean(process.env.RAPIDFIRE_AUTO_DYNAMIC === '1' || hasDynamicFlag);
-
-    let proceed = false;
-    if (autoDynamic) {
-      proceed = true;
-    } else {
-      const promptText = `\n\x1b[33m[rapidfire] Recipe '${stack}' is not in the predefined catalogue.\x1b[0m\nWould you like to dynamically scaffold this project now? (Y/N): `;
-      if (context && typeof context.ask === 'function') {
-        const ans = await context.ask(promptText);
-        proceed = Boolean(ans && ans.trim().toLowerCase().startsWith('y'));
-      } else if (context && context.rl) {
-        proceed = await new Promise((resolve) => {
-          context.rl.question(promptText, (ans) => {
-            resolve(Boolean(ans && ans.trim().toLowerCase().startsWith('y')));
-          });
-        });
-      }
-    }
-
-    if (proceed) {
-      return await scaffoldDynamicFramework(projectPath, targetFolder, plan, context);
-    } else {
-      console.error(`\x1b[31m[rapidfire] Unknown recipe '${stack}'.\x1b[0m`);
-      console.log('Type "help" to see all supported framework recipes.');
-      return;
-    }
+    console.log(`\x1b[36m[rapidfire] Auto-detected dynamic stack '${stack}'. Scaffolding project...\x1b[0m`);
+    return await scaffoldDynamicFramework(projectPath, targetFolder, plan, context);
   }
 
   switch (stack) {

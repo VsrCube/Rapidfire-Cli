@@ -1,6 +1,5 @@
 const assert = require('assert');
 const path = require('path');
-const os = require('os');
 const fse = require('fs-extra');
 const { planStack, PREDEFINED_RECIPES } = require('../src/scaffolding/planner');
 const { handleSetup } = require('../src/commands/setup');
@@ -41,7 +40,7 @@ async function runTests() {
   console.log('✔ StackPlanner accurately categorizes Predefined, Composed, and Dynamic stacks.\n');
 
   console.log('[Test 2] Testing live scaffolding of composed stack (svelte+fastapi)...');
-  const tempDir = path.join(os.tmpdir(), `rapidfire_test_dynamic_${Date.now()}`);
+  const tempDir = path.join('/tmp', `rapidfire_test_dynamic_${Date.now()}`);
   fse.ensureDirSync(tempDir);
   const origCwd = process.cwd();
   process.chdir(tempDir);
@@ -81,7 +80,7 @@ async function runTests() {
   }
 
   console.log('[Test 3] Testing user rejection (N) on unknown framework scaffolding...');
-  const tempDirReject = path.join(os.tmpdir(), `rapidfire_test_reject_${Date.now()}`);
+  const tempDirReject = path.join('/tmp', `rapidfire_test_reject_${Date.now()}`);
   fse.ensureDirSync(tempDirReject);
   process.chdir(tempDirReject);
 
@@ -102,7 +101,7 @@ async function runTests() {
   }
 
   console.log('[Test 4] Testing dynamic scaffolding for unknown framework (astro)...');
-  const tempDirDynamic = path.join(os.tmpdir(), `rapidfire_test_astro_${Date.now()}`);
+  const tempDirDynamic = path.join('/tmp', `rapidfire_test_astro_${Date.now()}`);
   fse.ensureDirSync(tempDirDynamic);
   process.chdir(tempDirDynamic);
 
@@ -136,17 +135,14 @@ async function runTests() {
     fse.removeSync(tempDirDynamic);
   }
 
-  console.log('[Test 5] Testing non-interactive --dynamic flag for unknown framework (solid)...');
-  const tempDirFlag = path.join(os.tmpdir(), `rapidfire_test_flag_${Date.now()}`);
+  console.log('[Test 5] Testing auto-detection of dynamic framework (solid)...');
+  const tempDirFlag = path.join('/tmp', `rapidfire_test_flag_${Date.now()}`);
   fse.ensureDirSync(tempDirFlag);
   process.chdir(tempDirFlag);
 
   try {
     const solidFolder = 'my_solid_app';
-    process.env.RAPIDFIRE_AUTO_DYNAMIC = '1';
-    await handleSetup(['solid', solidFolder, '--dynamic'], {
-      ask: async () => 'n'
-    });
+    await handleSetup(['solid', solidFolder]);
 
     const projectDir = path.join(tempDirFlag, solidFolder);
     assert.ok(fse.existsSync(projectDir), 'SolidJS project folder should exist');
@@ -166,11 +162,75 @@ async function runTests() {
     assert.strictEqual(manifest.recipe, 'solid');
     assert.strictEqual(manifest.generationMode, 'dynamic');
 
-    console.log('✔ Non-interactive --dynamic flag successfully scaffolded unknown framework.\n');
+    console.log('✔ Auto-detection of dynamic framework successfully scaffolded project without --dynamic flag.\n');
   } finally {
-    delete process.env.RAPIDFIRE_AUTO_DYNAMIC;
     process.chdir(origCwd);
     fse.removeSync(tempDirFlag);
+  }
+
+  console.log('[Test 6] Testing auto-detection of dynamic full-stack hybrid pairing (solid+fastapi)...');
+  const tempDirHybrid = path.join('/tmp', `rapidfire_test_hybrid_${Date.now()}`);
+  fse.ensureDirSync(tempDirHybrid);
+  process.chdir(tempDirHybrid);
+
+  try {
+    const hybridFolder = 'my_solid_fastapi_app';
+    await handleSetup(['solid+fastapi', hybridFolder]);
+
+    const projectDir = path.join(tempDirHybrid, hybridFolder);
+    assert.ok(fse.existsSync(projectDir), 'Project root should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'frontend')), 'frontend directory should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'frontend', 'package.json')), 'frontend/package.json should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'frontend', 'src', 'App.jsx')), 'frontend/src/App.jsx should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'backend')), 'backend directory should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'backend', 'main.py')), 'backend/main.py should exist');
+
+    const mainPy = fse.readFileSync(path.join(projectDir, 'backend', 'main.py'), 'utf8');
+    assert.ok(mainPy.includes('CORSMiddleware'), 'FastAPI backend should configure CORS');
+
+    const manifest = readManifest(projectDir);
+    assert.ok(manifest, 'Manifest should exist');
+    assert.strictEqual(manifest.frontend, 'solid');
+    assert.strictEqual(manifest.backend, 'fastapi');
+    assert.strictEqual(manifest.isFullstack, true);
+    assert.strictEqual(manifest.generationMode, 'dynamic');
+
+    console.log('✔ Auto-detection of hybrid dynamic fullstack pairing (solid+fastapi) scaffolded successfully without --dynamic flag.\n');
+  } finally {
+    process.chdir(origCwd);
+    fse.removeSync(tempDirHybrid);
+  }
+
+  console.log('[Test 7] Testing auto-detection of dynamic full-stack dual-dynamic pairing (solid+hono)...');
+  const tempDirDual = path.join('/tmp', `rapidfire_test_dual_${Date.now()}`);
+  fse.ensureDirSync(tempDirDual);
+  process.chdir(tempDirDual);
+
+  try {
+    const dualFolder = 'my_solid_hono_app';
+    await handleSetup(['solid+hono', dualFolder]);
+
+    const projectDir = path.join(tempDirDual, dualFolder);
+    assert.ok(fse.existsSync(projectDir), 'Project root should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'frontend')), 'frontend directory should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'frontend', 'package.json')), 'frontend/package.json should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'backend')), 'backend directory should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'backend', 'index.js')), 'backend/index.js should exist');
+
+    const indexJs = fse.readFileSync(path.join(projectDir, 'backend', 'index.js'), 'utf8');
+    assert.ok(indexJs.includes('/api/health'), 'Hono backend should provide /api/health endpoint');
+
+    const manifest = readManifest(projectDir);
+    assert.ok(manifest, 'Manifest should exist');
+    assert.strictEqual(manifest.frontend, 'solid');
+    assert.strictEqual(manifest.backend, 'hono');
+    assert.strictEqual(manifest.isFullstack, true);
+    assert.strictEqual(manifest.generationMode, 'dynamic');
+
+    console.log('✔ Auto-detection of dual-dynamic fullstack pairing (solid+hono) scaffolded successfully without --dynamic flag.\n');
+  } finally {
+    process.chdir(origCwd);
+    fse.removeSync(tempDirDual);
   }
 
   console.log('======================================================');

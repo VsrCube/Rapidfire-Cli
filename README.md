@@ -424,14 +424,6 @@ RapidFire does not limit developers to static templates. Its scaffolding subsyst
 | `setup svelte+node <dir>` | Svelte (Vite) | Express 4 LTS | High-performance reactive UI + Express API |
 | `setup <fe>+<be> <dir>` | Any Frontend | Any Backend | Arbitrary pairing (e.g., `setup svelte+fastapi myapp`) |
 
-### Dynamic Full-Stack & Database Scaffolding (Tier 3)
-RapidFire dynamically scaffolds arbitrary multi-tier architectures with integrated full-stack connectivity:
-* **Multi-Part Specifications**: Specify frontend, backend, and database in a single command (e.g. `setup solid+fastapi+sqlite myapp` or `setup react+hono+postgres myapp`).
-* **Frontend-to-Backend Connectivity**: Generates active API fetch requests to backend `/api/health` with environment-driven base URLs (`VITE_API_URL`).
-* **CORS Pre-Configuration**: The generated backend automatically whitelists local frontend origins (`http://localhost:3000`).
-* **Database Wiring**: Automatically creates `.env` with `DATABASE_URL` and provides database initialization code (e.g., SQLite file database or ORM client).
-* **Multi-Process Orchestration**: The `run` command discovers both `frontend/` and `backend/` directories and boots them simultaneously.
-
 ### Standalone & Dynamic Frameworks (Tier 1 & 3)
 | Recipe Command | Framework | Details |
 |---|---|---|
@@ -441,7 +433,6 @@ RapidFire dynamically scaffolds arbitrary multi-tier architectures with integrat
 | `setup fastapi <dir>` | FastAPI | `fastapi>=0.115.0`, `uvicorn>=0.32.0` |
 | `setup django <dir>` | Django | Official Django LTS (`Django>=4.2,<6.0`) |
 | `setup <unknown> <dir>` | Custom / Unknown | Dynamic AI blueprinting (e.g., `hono`, `astro`, `solid`, `nextjs`) |
-| `setup <fe>+<be>+<db> <dir>` | Custom Full-Stack | Connected full-stack architecture with database (e.g., `solid+fastapi+sqlite`) |
 
 ### Automated Python Virtual Environment Setup
 When scaffolding any Python stack (FastAPI, Django, Flask), RapidFire asks:

@@ -33,16 +33,16 @@ function planStack(stackInput) {
   }
 
   if (normalized.includes('+')) {
-    const parts = normalized.split('+').map(p => p.trim()).filter(Boolean);
-    if (parts.length >= 2) {
+    const parts = normalized.split('+');
+    if (parts.length === 2) {
       const [fe, be] = parts;
       const feKnown = hasFrontendAdapter(fe);
       const beKnown = hasBackendAdapter(be);
 
-      if (parts.length === 2 && feKnown && beKnown) {
+      if (feKnown && beKnown) {
         return {
           tier: 'COMPOSED',
-          stack: `${fe}+${be}`,
+          stack: normalized,
           frontend: fe,
           backend: be
         };
@@ -50,7 +50,7 @@ function planStack(stackInput) {
 
       return {
         tier: 'DYNAMIC',
-        stack: `${fe}+${be}`,
+        stack: normalized,
         isFullstackPairing: true,
         frontend: fe,
         backend: be,
