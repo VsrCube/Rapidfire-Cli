@@ -10,12 +10,11 @@ function getFallbackFullstackBlueprint(stack, targetFolder) {
   const parts = stack.split('+').map(p => p.trim());
   const fe = parts[0] || 'client';
   const be = parts[1] || 'server';
-  const db = parts[2] || null;
 
   const isPythonBe = be.includes('py') || be.includes('fastapi') || be.includes('flask') || be.includes('django');
   const backendPort = isPythonBe ? 8000 : 5000;
 
-  const dbInfoHtml = db ? `<p>Database: <code>${db}</code></p>` : `<p>Connected REST API Architecture</p>`;
+  const dbInfoHtml = `<p>Connected REST API Architecture</p>`;
 
   const files = [
     {
@@ -78,9 +77,7 @@ function getFallbackFullstackBlueprint(stack, targetFolder) {
   ];
 
   if (isPythonBe) {
-    const healthReturn = db
-      ? `{\n        "status": "online",\n        "service": "${be}",\n        "database": "${db}",\n        "connected": True\n    }`
-      : `{\n        "status": "online",\n        "service": "${be}",\n        "connected": True\n    }`;
+    const healthReturn = `{\n        "status": "online",\n        "service": "${be}",\n        "connected": True\n    }`;
 
     files.push({
       filename: 'backend/main.py',
@@ -91,9 +88,7 @@ function getFallbackFullstackBlueprint(stack, targetFolder) {
       content: `fastapi>=0.110.0\nuvicorn>=0.28.0\n`
     });
   } else {
-    const healthReturn = db
-      ? `{\n    status: 'online',\n    service: '${be}',\n    database: '${db}',\n    connected: true\n  }`
-      : `{\n    status: 'online',\n    service: '${be}',\n    connected: true\n  }`;
+    const healthReturn = `{\n    status: 'online',\n    service: '${be}',\n    connected: true\n  }`;
 
     files.push({
       filename: 'backend/package.json',
@@ -117,9 +112,7 @@ function getFallbackFullstackBlueprint(stack, targetFolder) {
     });
   }
 
-  const beEnv = db
-    ? `PORT=${backendPort}\nDATABASE_URL=${db.includes('postgres') ? 'postgresql://postgres:postgres@localhost:5432/' + targetFolder : (db.includes('mongo') ? 'mongodb://localhost:27017/' + targetFolder : 'sqlite:///./app.db')}\n`
-    : `PORT=${backendPort}\n`;
+  const beEnv = `PORT=${backendPort}\n`;
 
   files.push({
     filename: 'backend/.env.example',
@@ -131,16 +124,14 @@ function getFallbackFullstackBlueprint(stack, targetFolder) {
   });
   files.push({
     filename: '.gitignore',
-    content: `node_modules/\ndist/\n.env\n*.pyc\n__pycache__/\n*.db\n*.sqlite\n*.sqlite3\n`
+    content: `node_modules/\ndist/\n.env\n*.pyc\n__pycache__/\n`
   });
   files.push({
     filename: 'README.md',
     content: `# ${targetFolder}\nFull-stack application dynamically scaffolded for \`${stack}\`.\n\n## Running the Full-Stack Application\n\`\`\`bash\nrapidfire run ${targetFolder}\n\`\`\`\n\nOr individually:\n\`\`\`bash\n# Frontend\ncd frontend && npm install && npm run dev\n\n# Backend\ncd backend && npm install && npm start\n\`\`\`\n`
   });
 
-  const summary = db
-    ? `Full-stack ${fe} + ${be} architecture with ${db} database connectivity in '${targetFolder}'`
-    : `Full-stack ${fe} + ${be} architecture in '${targetFolder}'`;
+  const summary = `Full-stack ${fe} + ${be} architecture in '${targetFolder}'`;
 
   return {
     summary,
@@ -362,8 +353,8 @@ CRITICAL FULL-STACK CONNECTIVITY REQUIREMENTS:
 2. Connectivity:
    - Frontend must include an API client/fetch call to backend (e.g. /api/health).
    - Backend must configure CORS allowing http://localhost:3000.
-   - Include .env and .env.example files with API_URL and DATABASE_URL variables.
-   - If a database is specified, provide connection initialization code or SQLite configuration.
+   - Include .env and .env.example files with API_URL variable.
+   - DO NOT scaffold or configure any database (no SQLite, no PostgreSQL, no MongoDB, no ORMs). Do not include database drivers or connection strings. Focus strictly on frontend UI and backend REST API connectivity.
 3. Execution: Each tier must contain its respective package manifest (package.json, requirements.txt, or go.mod) and runnable scripts. If frontend is React (CRA or Vite), ALWAYS include "public/index.html" (or "index.html" for Vite) with <div id="root"></div> and a "dev" script in package.json.`;
     }
 

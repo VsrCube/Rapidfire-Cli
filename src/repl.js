@@ -15,6 +15,7 @@ class RapidfireRepl {
     this.rl = null;
     this.isPassthroughRunning = false;
     this.idleTimer = null;
+    this.parserErrorTimer = null;
     this.sessionCommands = [];
   }
 
@@ -115,6 +116,17 @@ class RapidfireRepl {
         chunk = chunk.replace(new RegExp(RAPIDFIRE_DONE_SENTINEL + '(\\r?\\n|\\s)*', 'g'), '');
       }
 
+      if (chunk && /ParserError:\s*/i.test(chunk)) {
+        if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
+        this.parserErrorTimer = setTimeout(() => {
+          if (this.isPassthroughRunning) {
+            this.isPassthroughRunning = false;
+            this.expectedEcho = null;
+            this.prompt();
+          }
+        }, 120);
+      }
+
       if (this.expectedEcho && chunk) {
         const trimmedEcho = this.expectedEcho.trim();
         const escaped = trimmedEcho.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -134,6 +146,7 @@ class RapidfireRepl {
 
       if (hasSentinel) {
         if (this.idleTimer) clearTimeout(this.idleTimer);
+        if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
         this.isPassthroughRunning = false;
         this.expectedEcho = null;
         this.prompt();
@@ -155,6 +168,7 @@ class RapidfireRepl {
         this.isPassthroughRunning = false;
         this.expectedEcho = null;
         if (this.idleTimer) clearTimeout(this.idleTimer);
+        if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
         this.prompt();
       } else {
         this.shutdown();
@@ -190,6 +204,7 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
       this.isPassthroughRunning = false;
       this.expectedEcho = null;
       if (this.idleTimer) clearTimeout(this.idleTimer);
+      if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
       this.prompt();
       return;
     }
@@ -224,13 +239,9 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
     this.isPassthroughRunning = true;
     this.expectedEcho = line;
     if (this.idleTimer) clearTimeout(this.idleTimer);
+    if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
 
-    const eol = this.shell.isPowerShell ? '\r\n' : '\n';
-    if (this.shell.isPowerShell) {
-      this.shell.write(`${line}${eol}echo "${RAPIDFIRE_DONE_SENTINEL}"`);
-    } else {
-      this.shell.write(`${line}; echo "${RAPIDFIRE_DONE_SENTINEL}"`);
-    }
+    this.shell.write(`${line}; echo "${RAPIDFIRE_DONE_SENTINEL}"`);
   }
 
   handleCdSync(line) {
@@ -267,6 +278,7 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
   shutdown() {
     console.log('\n\x1b[33m[rapidfire] Exiting....\x1b[0m');
     if (this.idleTimer) clearTimeout(this.idleTimer);
+    if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
     try {
       saveSessionHistory(this.sessionCommands);
     } catch { }

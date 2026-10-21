@@ -36,7 +36,7 @@ ${bold}DESCRIPTION:${reset}
 
 ${bold}CONNECTED FULL-STACK RECIPES (Frontend + Backend):${reset}
   ${green}setup react+fastapi <folder>${reset}    React (Vite) + FastAPI (Async Python)
-  ${green}setup react+django <folder>${reset}     React (Vite) + Django REST backend with SQLite
+  ${green}setup react+django <folder>${reset}     React (Vite) + Django REST backend
   ${green}setup react+node <folder>${reset}       React (Vite) + Express Node.js backend
   ${green}setup react+flask <folder>${reset}      React (Vite) + Flask Python backend
   ${green}setup vue+fastapi <folder>${reset}      Vue 3 (Vite) + FastAPI (Async Python)
@@ -49,7 +49,7 @@ ${bold}STANDALONE FRONTENDS & BACKENDS:${reset}
   ${green}setup vue <folder>${reset}             Standalone Vue 3 (Vite) SPA
   ${green}setup svelte <folder>${reset}          Standalone Svelte (Vite) SPA
   ${green}setup fastapi <folder>${reset}          Standalone high-performance FastAPI backend
-  ${green}setup django <folder>${reset}           Standalone Django backend with SQLite
+  ${green}setup django <folder>${reset}           Standalone Django backend
 
 ${bold}DYNAMIC & COMPOSED COMPOSITION:${reset}
   ${green}setup <fe>+<be> <folder>${reset}        Arbitrary stack pairings (e.g. svelte+fastapi, vue+flask)
@@ -314,7 +314,7 @@ ${bold}${cyan}╔═════════════════════
 ${bold}PROJECT SCAFFOLDING RECIPES (7 FRAMEWORKS / 13 OPTIONS):${reset}
   ${cyan}Connected Full-Stack Recipes:${reset}
     ${green}setup react+fastapi <folder>${reset}   React (Vite) + FastAPI (Async Python)
-    ${green}setup react+django <folder>${reset}    React (Vite) + Django REST backend with SQLite
+    ${green}setup react+django <folder>${reset}    React (Vite) + Django REST backend
     ${green}setup react+node <folder>${reset}      React (Vite) + Express Node.js backend
     ${green}setup react+flask <folder>${reset}     React (Vite) + Flask Python backend
     ${green}setup vue+fastapi <folder>${reset}     Vue 3 (Vite) + FastAPI (Async Python)
@@ -329,7 +329,7 @@ ${bold}PROJECT SCAFFOLDING RECIPES (7 FRAMEWORKS / 13 OPTIONS):${reset}
 
   ${cyan}Standalone Backends:${reset}
     ${green}setup fastapi <folder>${reset}         Standalone high-performance FastAPI backend
-    ${green}setup django <folder>${reset}          Standalone Django backend with SQLite
+    ${green}setup django <folder>${reset}          Standalone Django backend
 
   ${cyan}Dynamic & Composed Framework Scaffolding:${reset}
     ${green}setup <fe>+<be> <folder>${reset}       Arbitrary stack combinations (e.g. svelte+fastapi, vue+flask)
