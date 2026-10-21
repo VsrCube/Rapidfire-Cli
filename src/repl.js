@@ -163,6 +163,15 @@ class RapidfireRepl {
     });
 
     this.rl.on('SIGINT', () => {
+      try {
+        const { activeProcesses, stopActiveProcesses } = require('./commands/run');
+        if (activeProcesses && activeProcesses.length > 0) {
+          stopActiveProcesses();
+          console.log('\n\x1b[33m[rapidfire] Stopped application servers.\x1b[0m');
+          this.prompt();
+          return;
+        }
+      } catch {}
       if (this.isPassthroughRunning) {
         this.shell.write('\x03');
         this.isPassthroughRunning = false;
@@ -279,6 +288,10 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
     console.log('\n\x1b[33m[rapidfire] Exiting....\x1b[0m');
     if (this.idleTimer) clearTimeout(this.idleTimer);
     if (this.parserErrorTimer) clearTimeout(this.parserErrorTimer);
+    try {
+      const { stopActiveProcesses } = require('./commands/run');
+      stopActiveProcesses();
+    } catch { }
     try {
       saveSessionHistory(this.sessionCommands);
     } catch { }

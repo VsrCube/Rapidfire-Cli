@@ -40,6 +40,18 @@ function matchCommand(line) {
     };
   }
 
+  if (cmd === 'stop') {
+    return {
+      name: 'stop',
+      run: async () => {
+        const { stopActiveProcesses, activeProcesses } = require('./run');
+        const count = activeProcesses.length;
+        stopActiveProcesses();
+        console.log(`\x1b[32m[rapidfire] Stopped active application processes.\x1b[0m\n`);
+      }
+    };
+  }
+
   if (cmd === 'build') {
     return {
       name: 'build',

@@ -203,7 +203,7 @@ function handleRun(args = []) {
       console.log(`  Backend:  \x1b[36m${backendUrl}\x1b[0m${docsMsg}`);
     }
     console.log(`\nOpening in browser: \x1b[1m\x1b[36m${primaryUrl}\x1b[0m`);
-    console.log(`\x1b[2mPress Ctrl+C to stop all servers.\x1b[0m\n`);
+    console.log(`\x1b[2mPress Ctrl+C or type 'stop' to stop all servers.\x1b[0m\n`);
     openBrowser(primaryUrl);
   }, 1200);
 
@@ -215,7 +215,42 @@ function handleRun(args = []) {
   };
 }
 
+function stopActiveProcesses() {
+  while (activeProcesses.length > 0) {
+    const proc = activeProcesses.pop();
+    if (proc && proc.pid) {
+      try {
+        if (process.platform === 'win32') {
+          execSync(`taskkill /pid ${proc.pid} /T /F`, { stdio: 'ignore' });
+        } else {
+          try {
+            execSync(`pkill -P ${proc.pid}`, { stdio: 'ignore' });
+          } catch {}
+          proc.kill('SIGTERM');
+        }
+      } catch {
+        try {
+          proc.kill('SIGTERM');
+        } catch {}
+      }
+    }
+  }
+}
+
+process.on('SIGINT', () => {
+  stopActiveProcesses();
+});
+
+process.on('SIGTERM', () => {
+  stopActiveProcesses();
+});
+
+process.on('exit', () => {
+  stopActiveProcesses();
+});
+
 module.exports = {
   handleRun,
+  stopActiveProcesses,
   activeProcesses
 };
