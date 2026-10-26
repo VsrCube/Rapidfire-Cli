@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { generateRepoOverview } = require('../ai/gemini');
 const { findRepoRoot, recordOverviewEntry } = require('../utils/repoMemory');
 const { formatMarkdownForTerminal, renderTerminalBox } = require('./ask');
@@ -34,7 +35,8 @@ async function handleOverview(args = []) {
     return { success: false, error: 'NOT_FOUND' };
   }
 
-  const repoRoot = findRepoRoot(targetPath);
+  const isInsideCwd = targetPath.startsWith(process.cwd()) && process.cwd() !== os.homedir();
+  const repoRoot = isInsideCwd ? findRepoRoot(process.cwd()) : findRepoRoot(targetPath);
   const displayTarget = path.relative(process.cwd(), targetPath) || '.';
   const modeLabel = isCritic ? 'architectural critique' : 'repository overview';
 
@@ -47,8 +49,7 @@ async function handleOverview(args = []) {
     return result;
   }
 
-  const targetDir = fs.statSync(targetPath).isDirectory() ? targetPath : path.dirname(targetPath);
-  const mdDir = path.join(targetDir, 'md');
+  const mdDir = path.join(repoRoot, 'md');
   if (!fs.existsSync(mdDir)) {
     fs.mkdirSync(mdDir, { recursive: true });
   }

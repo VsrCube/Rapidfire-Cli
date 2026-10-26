@@ -9,11 +9,13 @@ const { isVercelInstalled } = require('../integrations/vercel');
 const { planStack } = require('../scaffolding/planner');
 const { scaffoldDynamicFramework } = require('../scaffolding/dynamicEngine');
 const { getParentGitRepo, promptConfirmation } = require('../utils/gitContext');
+const { getFrontendAdapter, hasFrontendAdapter, normalizeFrontendName } = require('../scaffolding/adapters/frontend');
+const { getBackendAdapter, hasBackendAdapter, normalizeBackendName, getBackendDefaultPort } = require('../scaffolding/adapters/backend');
 
-function scaffoldViteReact(frontendDir) {
+function scaffoldViteReact(frontendDir, isStandalone = false) {
   fse.ensureDirSync(frontendDir);
   console.log(`[rapidfire] Scaffolding React (Vite) frontend in ${frontendDir}...`);
-  scaffoldViteReactFallback(frontendDir);
+  scaffoldViteReactFallback(frontendDir, isStandalone);
 
   if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1') {
     console.log('[rapidfire] Installing React frontend dependencies...');
@@ -28,7 +30,7 @@ function scaffoldViteReact(frontendDir) {
   }
 }
 
-function scaffoldViteReactFallback(frontendDir) {
+function scaffoldViteReactFallback(frontendDir, isStandalone = false) {
   const pkgJson = {
     name: 'frontend',
     private: true,
@@ -52,7 +54,44 @@ export default defineConfig({ plugins: [react()], server: { port: 3000 } });
   fse.ensureDirSync(srcDir);
   fse.writeFileSync(path.join(srcDir, 'index.css'), `* { box-sizing: border-box; margin: 0; padding: 0; }
 body { margin: 0; background: #0b0f19; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; display: flex; min-height: 100vh; align-items: center; justify-content: center; }`, 'utf8');
-  fse.writeFileSync(path.join(srcDir, 'App.jsx'), `import React, { useState } from 'react';
+
+  const appContent = isStandalone ? `import React, { useState } from 'react';
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div style={{ maxWidth: '640px', width: '90%', background: '#131b2e', border: '1px solid #1e293b', borderRadius: '16px', padding: '2.5rem', boxShadow: '0 20px 50px rgba(0,0,0,0.5)', textAlign: 'center' }}>
+      <div style={{ display: 'inline-block', padding: '0.25rem 0.75rem', borderRadius: '999px', background: 'rgba(6,182,212,0.15)', color: '#06b6d4', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
+        [STANDALONE] Single-Page Application
+      </div>
+      <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem', background: 'linear-gradient(135deg, #38bdf8, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+        RapidFire React Application
+      </h1>
+      <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '2rem' }}>
+        High-performance React 18 single-page application scaffolded with Vite and GitLeaks security.
+      </p>
+
+      <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <button style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', background: '#2563eb', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', transition: 'transform 0.1s' }} onClick={() => setCount(c => c + 1)}>
+          State Counter: {count}
+        </button>
+      </div>
+
+      <div style={{ marginTop: '1.5rem', padding: '1rem', borderRadius: '8px', background: 'rgba(15,23,42,0.6)', border: '1px solid #1e293b', textAlign: 'left', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+        <div style={{ fontWeight: 'bold', color: '#38bdf8', marginBottom: '0.35rem' }}>
+          [READY] Standalone Frontend Active
+        </div>
+        <div style={{ color: '#94a3b8', fontSize: '0.8rem', lineHeight: '1.4' }}>
+          • Edit src/App.jsx to build your user interface.<br />
+          • Run "stop" to terminate the development server anytime.<br />
+          • Run "push" to stage, scan for secrets, and commit.
+        </div>
+      </div>
+    </div>
+  );
+}
+` : `import React, { useState } from 'react';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function App() {
@@ -111,16 +150,18 @@ export default function App() {
     </div>
   );
 }
-`, 'utf8');
+`;
+
+  fse.writeFileSync(path.join(srcDir, 'App.jsx'), appContent, 'utf8');
   fse.writeFileSync(path.join(srcDir, 'main.jsx'), `import React from 'react'; import ReactDOM from 'react-dom/client'; import App from './App'; import './index.css';
 ReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
 `, 'utf8');
 }
 
-function scaffoldViteVue(frontendDir) {
+function scaffoldViteVue(frontendDir, isStandalone = false) {
   fse.ensureDirSync(frontendDir);
   console.log(`[rapidfire] Scaffolding Vue 3 (Vite) frontend in ${frontendDir}...`);
-  scaffoldViteVueFallback(frontendDir);
+  scaffoldViteVueFallback(frontendDir, isStandalone);
 
   if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1') {
     console.log('[rapidfire] Installing Vue frontend dependencies...');
@@ -135,7 +176,7 @@ function scaffoldViteVue(frontendDir) {
   }
 }
 
-function scaffoldViteVueFallback(frontendDir) {
+function scaffoldViteVueFallback(frontendDir, isStandalone = false) {
   const pkgJson = {
     name: 'frontend',
     private: true,
@@ -156,24 +197,108 @@ export default defineConfig({ plugins: [vue()], server: { port: 3000 } });
 `, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
-  fse.writeFileSync(path.join(srcDir, 'App.vue'), `<script setup>
+  const appVueContent = isStandalone ? `<script setup>
 import { ref } from 'vue';
 const count = ref(0);
 </script>
 <template>
-  <div style="text-align: center; color: #f8fafc; font-family: system-ui;">
-    <h1>Rapidfire Vue 3 App</h1>
-    <button style="padding: 0.6rem 1.2rem; border-radius: 6px; background: #42b883; border: none; font-weight: bold;" @click="count++">Count: {{ count }}</button>
+  <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; padding: 1rem;">
+    <div style="max-width: 640px; width: 90%; background: #131b2e; border: 1px solid #1e293b; border-radius: 16px; padding: 2.5rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5); text-align: center;">
+      <div style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 999px; background: rgba(6,182,212,0.15); color: #06b6d4; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
+        [STANDALONE] Single-Page Application
+      </div>
+      <h1 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem; background: linear-gradient(135deg, #42b883, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        RapidFire Vue 3 Application
+      </h1>
+      <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">
+        High-performance Vue 3 single-page application scaffolded with Vite and GitLeaks security.
+      </p>
+      <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <button style="padding: 0.75rem 1.5rem; border-radius: 8px; background: #42b883; color: #fff; border: none; font-weight: 600; cursor: pointer;" @click="count++">
+          State Counter: {{ count }}
+        </button>
+      </div>
+      <div style="margin-top: 1.5rem; padding: 1rem; border-radius: 8px; background: rgba(15,23,42,0.6); border: 1px solid #1e293b; text-align: left; font-family: monospace; font-size: 0.85rem;">
+        <div style="font-weight: bold; color: #42b883; margin-bottom: 0.35rem;">
+          [READY] Standalone Frontend Active
+        </div>
+        <div style="color: #94a3b8; font-size: 0.8rem; line-height: 1.4;">
+          • Edit src/App.vue to build your user interface.<br />
+          • Run "stop" to terminate the development server anytime.<br />
+          • Run "push" to stage, scan for secrets, and commit.
+        </div>
+      </div>
+    </div>
   </div>
 </template>
-`, 'utf8');
+` : `<script setup>
+import { ref } from 'vue';
+
+const count = ref(0);
+const apiResponse = ref(null);
+const loading = ref(false);
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+async function testBackendApi() {
+  loading.value = true;
+  try {
+    let res;
+    try {
+      res = await fetch(API_URL + '/api/health');
+    } catch {
+      res = await fetch('http://localhost:5000/api/health');
+    }
+    const data = await res.json();
+    apiResponse.value = { status: 'success', data };
+  } catch (err) {
+    apiResponse.value = { status: 'offline', error: err.message };
+  } finally {
+    loading.value = false;
+  }
+}
+</script>
+
+<template>
+  <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; padding: 1rem;">
+    <div style="max-width: 640px; width: 90%; background: #131b2e; border: 1px solid #1e293b; border-radius: 16px; padding: 2.5rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5); text-align: center;">
+      <div style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 999px; background: rgba(6,182,212,0.15); color: #06b6d4; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
+        [ARCH] Dual-Tier Microservice Architecture
+      </div>
+      <h1 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem; background: linear-gradient(135deg, #42b883, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        RapidFire Full-Stack Application
+      </h1>
+      <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">
+        Frontend (Vue 3 Vite) connected to Backend API with pre-configured CORS and GitLeaks security.
+      </p>
+
+      <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <button style="padding: 0.75rem 1.5rem; border-radius: 8px; background: #42b883; color: #fff; border: none; font-weight: 600; cursor: pointer;" @click="count++">
+          State Counter: {{ count }}
+        </button>
+        <button style="padding: 0.75rem 1.5rem; border-radius: 8px; background: #059669; color: #fff; border: none; font-weight: 600; cursor: pointer;" @click="testBackendApi" :disabled="loading">
+          {{ loading ? 'Pinging Backend...' : 'Test Backend API (/api/health)' }}
+        </button>
+      </div>
+
+      <div v-if="apiResponse" :style="{ marginTop: '1.5rem', padding: '1rem', borderRadius: '8px', background: apiResponse.status === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: '1px solid ' + (apiResponse.status === 'success' ? '#10b981' : '#ef4444'), textAlign: 'left', fontFamily: 'monospace', fontSize: '0.85rem' }">
+        <div :style="{ fontWeight: 'bold', color: apiResponse.status === 'success' ? '#34d399' : '#f87171', marginBottom: '0.35rem' }">
+          {{ apiResponse.status === 'success' ? '[200 OK] Backend Microservice Connected!' : '[OFFLINE] Backend Server Offline (Run backend server)' }}
+        </div>
+        <pre style="margin: 0; color: #e2e8f0;">{{ JSON.stringify(apiResponse.data || { error: apiResponse.error }, null, 2) }}</pre>
+      </div>
+    </div>
+  </div>
+</template>
+`;
+  fse.writeFileSync(path.join(srcDir, 'App.vue'), appVueContent, 'utf8');
   fse.writeFileSync(path.join(srcDir, 'main.js'), `import { createApp } from 'vue'; import App from './App.vue'; createApp(App).mount('#app');`, 'utf8');
 }
 
-function scaffoldViteSvelte(frontendDir) {
+function scaffoldViteSvelte(frontendDir, isStandalone = false) {
   fse.ensureDirSync(frontendDir);
   console.log(`[rapidfire] Scaffolding Svelte (Vite) frontend in ${frontendDir}...`);
-  scaffoldViteSvelteFallback(frontendDir);
+  scaffoldViteSvelteFallback(frontendDir, isStandalone);
 
   if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1') {
     console.log('[rapidfire] Installing Svelte frontend dependencies...');
@@ -188,7 +313,7 @@ function scaffoldViteSvelte(frontendDir) {
   }
 }
 
-function scaffoldViteSvelteFallback(frontendDir) {
+function scaffoldViteSvelteFallback(frontendDir, isStandalone = false) {
   const pkgJson = {
     name: 'frontend',
     private: true,
@@ -214,14 +339,96 @@ export default defineConfig({ plugins: [svelte()], server: { port: 3000 } });
 `, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
-  fse.writeFileSync(path.join(srcDir, 'App.svelte'), `<script>
+  const appSvelteContent = isStandalone ? `<script>
   let count = $state(0);
 </script>
-<div style="text-align: center;">
-  <h1>Rapidfire Svelte App</h1>
-  <button style="padding: 0.6rem 1.2rem; border-radius: 6px; background: #ff3e00; color: white; border: none; font-weight: bold; cursor: pointer;" onclick={() => count++}>Count: {count}</button>
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; padding: 1rem;">
+  <div style="max-width: 640px; width: 90%; background: #131b2e; border: 1px solid #1e293b; border-radius: 16px; padding: 2.5rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5); text-align: center;">
+    <div style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 999px; background: rgba(6,182,212,0.15); color: #06b6d4; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
+      [STANDALONE] Single-Page Application
+    </div>
+    <h1 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem; background: linear-gradient(135deg, #ff3e00, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+      RapidFire Svelte Application
+    </h1>
+    <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">
+      High-performance Svelte single-page application scaffolded with Vite and GitLeaks security.
+    </p>
+    <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
+      <button style="padding: 0.75rem 1.5rem; border-radius: 8px; background: #ff3e00; color: white; border: none; font-weight: 600; cursor: pointer;" onclick={() => count++}>
+        State Counter: {count}
+      </button>
+    </div>
+    <div style="margin-top: 1.5rem; padding: 1rem; border-radius: 8px; background: rgba(15,23,42,0.6); border: 1px solid #1e293b; text-align: left; font-family: monospace; font-size: 0.85rem;">
+      <div style="font-weight: bold; color: #ff3e00; margin-bottom: 0.35rem;">
+        [READY] Standalone Frontend Active
+      </div>
+      <div style="color: #94a3b8; font-size: 0.8rem; line-height: 1.4;">
+        • Edit src/App.svelte to build your user interface.<br />
+        • Run "stop" to terminate the development server anytime.<br />
+        • Run "push" to stage, scan for secrets, and commit.
+      </div>
+    </div>
+  </div>
 </div>
-`, 'utf8');
+` : `<script>
+  let count = $state(0);
+  let apiResponse = $state(null);
+  let loading = $state(false);
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+  async function testBackendApi() {
+    loading = true;
+    try {
+      let res;
+      try {
+        res = await fetch(API_URL + '/api/health');
+      } catch {
+        res = await fetch('http://localhost:5000/api/health');
+      }
+      const data = await res.json();
+      apiResponse = { status: 'success', data };
+    } catch (err) {
+      apiResponse = { status: 'offline', error: err.message };
+    } finally {
+      loading = false;
+    }
+  }
+</script>
+
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; padding: 1rem;">
+  <div style="max-width: 640px; width: 90%; background: #131b2e; border: 1px solid #1e293b; border-radius: 16px; padding: 2.5rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5); text-align: center;">
+    <div style="display: inline-block; padding: 0.25rem 0.75rem; border-radius: 999px; background: rgba(6,182,212,0.15); color: #06b6d4; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
+      [ARCH] Dual-Tier Microservice Architecture
+    </div>
+    <h1 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem; background: linear-gradient(135deg, #ff3e00, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+      RapidFire Full-Stack Application
+    </h1>
+    <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">
+      Frontend (Svelte Vite) connected to Backend API with pre-configured CORS and GitLeaks security.
+    </p>
+
+    <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
+      <button style="padding: 0.75rem 1.5rem; border-radius: 8px; background: #ff3e00; color: #fff; border: none; font-weight: 600; cursor: pointer;" onclick={() => count++}>
+        State Counter: {count}
+      </button>
+      <button style="padding: 0.75rem 1.5rem; border-radius: 8px; background: #059669; color: #fff; border: none; font-weight: 600; cursor: pointer;" onclick={testBackendApi} disabled={loading}>
+        {loading ? 'Pinging Backend...' : 'Test Backend API (/api/health)'}
+      </button>
+    </div>
+
+    {#if apiResponse}
+      <div style="margin-top: 1.5rem; padding: 1rem; border-radius: 8px; background: {apiResponse.status === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'}; border: 1px solid {apiResponse.status === 'success' ? '#10b981' : '#ef4444'}; text-align: left; font-family: monospace; font-size: 0.85rem;">
+        <div style="font-weight: bold; color: {apiResponse.status === 'success' ? '#34d399' : '#f87171'}; margin-bottom: 0.35rem;">
+          {apiResponse.status === 'success' ? '[200 OK] Backend Microservice Connected!' : '[OFFLINE] Backend Server Offline (Run backend server)'}
+        </div>
+        <pre style="margin: 0; color: #e2e8f0;">{JSON.stringify(apiResponse.data || { error: apiResponse.error }, null, 2)}</pre>
+      </div>
+    {/if}
+  </div>
+</div>
+`;
+  fse.writeFileSync(path.join(srcDir, 'App.svelte'), appSvelteContent, 'utf8');
   fse.writeFileSync(path.join(srcDir, 'main.js'), `import { mount } from 'svelte';
 import App from './App.svelte';
 const app = mount(App, { target: document.getElementById('app') });
@@ -307,12 +514,75 @@ app.listen(PORT, () => console.log(\`Server running on http://localhost:\${PORT}
   }
 }
 
+function configureDjangoCorsAndHealth(backendDir) {
+  let settingsPath = path.join(backendDir, 'backend', 'settings.py');
+  if (!fse.existsSync(settingsPath)) {
+    try {
+      const items = fse.readdirSync(backendDir);
+      for (const item of items) {
+        const candidate = path.join(backendDir, item, 'settings.py');
+        if (fse.existsSync(candidate)) {
+          settingsPath = candidate;
+          break;
+        }
+      }
+    } catch { }
+  }
+
+  if (fse.existsSync(settingsPath)) {
+    let settingsContent = fse.readFileSync(settingsPath, 'utf8');
+    if (!settingsContent.includes("'corsheaders'")) {
+      settingsContent = settingsContent.replace(/INSTALLED_APPS\s*=\s*\[/, "INSTALLED_APPS = [\n    'corsheaders',");
+    }
+    if (!settingsContent.includes("'corsheaders.middleware.CorsMiddleware'")) {
+      settingsContent = settingsContent.replace(/MIDDLEWARE\s*=\s*\[/, "MIDDLEWARE = [\n    'corsheaders.middleware.CorsMiddleware',");
+    }
+    settingsContent = settingsContent.replace(/ALLOWED_HOSTS\s*=\s*\[\]/, "ALLOWED_HOSTS = ['*']");
+    if (!settingsContent.includes('CORS_ALLOW_ALL_ORIGINS')) {
+      settingsContent += `\nCORS_ALLOWED_ORIGINS = [\n    "http://localhost:3000",\n    "http://127.0.0.1:3000",\n    "http://localhost:3001",\n    "http://127.0.0.1:3001",\n    "http://localhost:5173",\n    "http://127.0.0.1:5173",\n]\nCORS_ALLOW_ALL_ORIGINS = True\n`;
+    }
+    fse.writeFileSync(settingsPath, settingsContent, 'utf8');
+  }
+
+  let urlsPath = path.join(backendDir, 'backend', 'urls.py');
+  if (!fse.existsSync(urlsPath)) {
+    try {
+      const items = fse.readdirSync(backendDir);
+      for (const item of items) {
+        const candidate = path.join(backendDir, item, 'urls.py');
+        if (fse.existsSync(candidate)) {
+          urlsPath = candidate;
+          break;
+        }
+      }
+    } catch { }
+  }
+
+  if (fse.existsSync(urlsPath)) {
+    const urlsPy = `from django.contrib import admin
+from django.urls import path
+from django.http import JsonResponse
+
+def health_check(request):
+    return JsonResponse({'status': 'ok', 'message': 'Django backend is running'})
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/health', health_check),
+    path('api/health/', health_check),
+]
+`;
+    fse.writeFileSync(urlsPath, urlsPy, 'utf8');
+  }
+}
+
 function writeDjangoBackend(backendDir) {
   fse.ensureDirSync(backendDir);
   console.log('[rapidfire] Scaffolding Django backend...');
   const djangoCmd = getDjangoAdminCmd();
   run(`${djangoCmd} startproject backend "${backendDir}"`);
   fse.writeFileSync(path.join(backendDir, 'requirements.txt'), `asgiref>=3.8.1\nDjango>=4.2,<6.0\ndjango-cors-headers>=4.3.1\nsqlparse>=0.5.0\n`, 'utf8');
+  configureDjangoCorsAndHealth(backendDir);
 }
 
 function writeFlaskBackend(backendDir) {
@@ -405,6 +675,24 @@ async function maybePromptForVenv(pythonDir, context) {
     if (res.success) {
       console.log(`\x1b[32m[OK] Virtual environment created at ${res.venvPath}\x1b[0m`);
       console.log(`  To activate: \x1b[36m${res.activateCmd}\x1b[0m`);
+      const reqPath = path.join(pythonDir, 'requirements.txt');
+      if (fse.existsSync(reqPath) && process.env.RAPIDFIRE_SKIP_INSTALL !== '1') {
+        console.log(`[rapidfire] Installing Python dependencies into virtual environment...`);
+        const isWindows = process.platform === 'win32';
+        const pipCmd = isWindows ? path.join(res.venvPath, 'Scripts', 'pip.exe') : path.join(res.venvPath, 'bin', 'pip');
+        const pyCmd = isWindows ? path.join(res.venvPath, 'Scripts', 'python.exe') : path.join(res.venvPath, 'bin', 'python');
+        try {
+          run(`"${pipCmd}" install -r "${reqPath}"`, { cwd: pythonDir, stdio: 'pipe' });
+          console.log(`\x1b[32m[OK] Python dependencies installed successfully.\x1b[0m`);
+          if (fse.existsSync(path.join(pythonDir, 'manage.py'))) {
+            try {
+              run(`"${pyCmd}" manage.py migrate`, { cwd: pythonDir, stdio: 'pipe' });
+            } catch {}
+          }
+        } catch (err) {
+          console.warn('\x1b[33m[rapidfire] pip install notice:\x1b[0m', err.message);
+        }
+      }
     } else {
       console.log(`\x1b[33m[WARN] Could not create virtual environment: ${res.error}\x1b[0m`);
     }
@@ -501,9 +789,11 @@ async function handleSetup(args, context = {}) {
     return;
   }
 
-  if (plan.tier === 'COMPOSED') {
-    console.log(`[rapidfire] Composing multi-framework stack: ${plan.frontend} (frontend) + ${plan.backend} (backend)...`);
-    await setupFullstack(projectPath, targetFolder, plan.frontend, plan.backend, context);
+  if (plan.tier === 'COMPOSED' || (plan.tier === 'PREDEFINED' && plan.isFullstack)) {
+    const fe = plan.frontend || stack.split('+')[0];
+    const be = plan.backend || stack.split('+')[1];
+    console.log(`[rapidfire] Composing multi-framework stack: ${fe} (frontend) + ${be} (backend)...`);
+    await setupFullstack(projectPath, targetFolder, fe, be, context);
     return;
   }
 
@@ -512,59 +802,36 @@ async function handleSetup(args, context = {}) {
     return await scaffoldDynamicFramework(projectPath, targetFolder, plan, context);
   }
 
-  switch (stack) {
-    case 'react':
-      await setupStandaloneFrontend(projectPath, targetFolder, 'react', context);
-      break;
-    case 'vue':
-      await setupStandaloneFrontend(projectPath, targetFolder, 'vue', context);
-      break;
-    case 'svelte':
-      await setupStandaloneFrontend(projectPath, targetFolder, 'svelte', context);
-      break;
-    case 'react+fastapi':
-      await setupFullstack(projectPath, targetFolder, 'react', 'fastapi', context);
-      break;
-    case 'react+django':
-      await setupFullstack(projectPath, targetFolder, 'react', 'django', context);
-      break;
-    case 'react+node':
-      await setupFullstack(projectPath, targetFolder, 'react', 'node', context);
-      break;
-    case 'vue+fastapi':
-      await setupFullstack(projectPath, targetFolder, 'vue', 'fastapi', context);
-      break;
-    case 'vue+node':
-      await setupFullstack(projectPath, targetFolder, 'vue', 'node', context);
-      break;
-    case 'vue+django':
-      await setupFullstack(projectPath, targetFolder, 'vue', 'django', context);
-      break;
-    case 'react+flask':
-      await setupFullstack(projectPath, targetFolder, 'react', 'flask', context);
-      break;
-    case 'svelte+node':
-      await setupFullstack(projectPath, targetFolder, 'svelte', 'node', context);
-      break;
-    case 'fastapi':
-      await setupStandaloneFastAPI(projectPath, targetFolder, context);
-      break;
-    case 'django':
-      await setupStandaloneDjango(projectPath, targetFolder, context);
-      break;
-    default:
-      console.error(`\x1b[31m[rapidfire] Unknown recipe '${stack}'.\x1b[0m`);
-      console.log('Type "help" to see all supported framework recipes.');
-  }
-}
-
-async function setupFullstack(projectPath, targetFolder, frontend, backend, context = {}) {
-  if (!commandExists('npm')) {
-    console.error('[rapidfire] Missing required tool: npm');
+  if (plan.type === 'standalone_frontend' || hasFrontendAdapter(stack)) {
+    await setupStandaloneFrontend(projectPath, targetFolder, plan.stack || stack, context);
     return;
   }
 
-  if (backend === 'django') {
+  if (plan.type === 'standalone_backend' || hasBackendAdapter(stack)) {
+    await setupStandaloneBackend(projectPath, targetFolder, plan.stack || stack, context);
+    return;
+  }
+
+  console.error(`\x1b[31m[rapidfire] Unknown recipe '${stack}'.\x1b[0m`);
+  console.log('Type "help" to see all supported framework recipes.');
+}
+
+async function setupFullstack(projectPath, targetFolder, frontend, backend, context = {}) {
+  const normFe = normalizeFrontendName(frontend);
+  const normBe = normalizeBackendName(backend);
+  const feAdapter = getFrontendAdapter(normFe);
+  const beAdapter = getBackendAdapter(normBe);
+
+  if (!feAdapter) {
+    console.error(`\x1b[31m[rapidfire] Unknown frontend: '${frontend}'.\x1b[0m`);
+    return;
+  }
+  if (!beAdapter) {
+    console.error(`\x1b[31m[rapidfire] Unknown backend: '${backend}'.\x1b[0m`);
+    return;
+  }
+
+  if (normBe === 'django') {
     if (!commandExists('django-admin')) {
       console.error('[rapidfire] Missing required tool: django-admin (pip install django)');
       return;
@@ -573,44 +840,40 @@ async function setupFullstack(projectPath, targetFolder, frontend, backend, cont
 
   fse.ensureDirSync(projectPath);
 
+  const backendPort = getBackendDefaultPort(normBe);
   const frontendDir = path.join(projectPath, 'frontend');
-  if (frontend === 'react') scaffoldViteReact(frontendDir);
-  else if (frontend === 'vue') scaffoldViteVue(frontendDir);
-  else if (frontend === 'svelte') scaffoldViteSvelte(frontendDir);
+  feAdapter(frontendDir, { port: 3000, apiPort: backendPort, isStandalone: false, appName: targetFolder });
 
   const backendDir = path.join(projectPath, 'backend');
-  if (backend === 'fastapi') writeFastAPIBackend(backendDir, targetFolder);
-  else if (backend === 'node') writeExpressBackend(backendDir, targetFolder);
-  else if (backend === 'django') writeDjangoBackend(backendDir);
-  else if (backend === 'flask') writeFlaskBackend(backendDir);
+  beAdapter(backendDir, targetFolder, { port: backendPort, isStandalone: false });
 
-  fse.writeFileSync(path.join(projectPath, '.gitignore'), `node_modules/\ndist/\n.env\n__pycache__/\n*.pyc\nvenv/\n.venv/\n`, 'utf8');
+  fse.writeFileSync(path.join(projectPath, '.gitignore'), `node_modules/\ndist/\n.env\n__pycache__/\n*.pyc\nvenv/\n.venv/\ntarget/\nbin/\nobj/\n`, 'utf8');
 
   fse.writeFileSync(path.join(projectPath, 'README.md'), `# ${targetFolder}
 Scaffolded with RapidFire CLI (\`setup ${frontend}+${backend}\`).
 
-## Frontend (${frontend.toUpperCase()})
+## Frontend (${normFe.toUpperCase()})
 \`\`\`bash
 cd frontend
 npm run dev
 \`\`\`
 
-## Backend (${backend.toUpperCase()})
+## Backend (${normBe.toUpperCase()})
 \`\`\`bash
 cd backend
 \`\`\`
 `, 'utf8');
 
-  const isPredefined = ['react+fastapi', 'react+django', 'react+node', 'vue+fastapi', 'vue+node', 'vue+django', 'react+flask', 'svelte+node'].includes(`${frontend}+${backend}`);
+  const isPredefined = ['react+fastapi', 'react+django', 'react+node', 'vue+fastapi', 'vue+node', 'vue+django', 'react+flask', 'svelte+node'].includes(`${frontend}+${backend}`) || ['react+fastapi', 'react+django', 'react+node', 'vue+fastapi', 'vue+node', 'vue+django', 'react+flask', 'svelte+node'].includes(`${normFe}+${normBe}`);
   writeManifest(projectPath, {
-    frontend,
-    backend,
+    frontend: frontend === 'node' ? 'node' : (normFe || frontend),
+    backend: backend === 'node' ? 'node' : (normBe || backend),
     folderName: targetFolder,
     generationMode: isPredefined ? 'predefined' : 'composed'
   });
   await initGitAndHooks(projectPath, targetFolder, context);
 
-  if (['fastapi', 'django', 'flask'].includes(backend) && context && (context.ask || context.rl || process.env.RAPIDFIRE_AUTO_VENV)) {
+  if (['fastapi', 'django', 'flask'].includes(normBe) && context && (context.ask || context.rl || process.env.RAPIDFIRE_AUTO_VENV)) {
     await maybePromptForVenv(backendDir, context);
   }
 
@@ -618,43 +881,29 @@ cd backend
     await maybePromptForGithubRepo(projectPath, targetFolder, context);
   }
 
-  reportSuccess(targetFolder, `${frontend}+${backend}`);
+  reportSuccess(targetFolder, `${normFe}+${normBe}`);
 }
 
-async function setupStandaloneFastAPI(projectPath, targetFolder, context = {}) {
-  fse.ensureDirSync(projectPath);
-  console.log(`[rapidfire] Scaffolding standalone FastAPI project in ${targetFolder}...`);
-  writeFastAPIBackend(projectPath, targetFolder);
-  fse.writeFileSync(path.join(projectPath, '.gitignore'), `__pycache__/\n*.pyc\nvenv/\n.venv/\n.env\n`, 'utf8');
-  writeManifest(projectPath, { frontend: null, backend: 'fastapi', folderName: targetFolder });
-  await initGitAndHooks(projectPath, targetFolder, context);
-
-  if (context && (context.ask || context.rl || process.env.RAPIDFIRE_AUTO_VENV)) {
-    await maybePromptForVenv(projectPath, context);
+async function setupStandaloneBackend(projectPath, targetFolder, backend, context = {}) {
+  const normBe = normalizeBackendName(backend);
+  const beAdapter = getBackendAdapter(normBe);
+  if (!beAdapter) {
+    console.error(`\x1b[31m[rapidfire] Unknown backend: '${backend}'.\x1b[0m`);
+    return;
   }
-
-  if (context && (context.ask || context.rl || process.env.RAPIDFIRE_AUTO_GH)) {
-    await maybePromptForGithubRepo(projectPath, targetFolder, context);
-  }
-
-  reportSuccess(targetFolder, 'fastapi');
-}
-
-async function setupStandaloneDjango(projectPath, targetFolder, context = {}) {
-  if (!commandExists('django-admin')) {
+  if (normBe === 'django' && !commandExists('django-admin')) {
     console.error('[rapidfire] Missing required tool: django-admin (pip install django)');
     return;
   }
   fse.ensureDirSync(projectPath);
-  console.log(`[rapidfire] Scaffolding Django project in ${targetFolder}...`);
-  const djangoCmd = getDjangoAdminCmd();
-  run(`${djangoCmd} startproject "${path.basename(targetFolder)}" "${projectPath}"`);
-  fse.writeFileSync(path.join(projectPath, 'requirements.txt'), `asgiref>=3.8.1\nDjango>=4.2,<6.0\nsqlparse>=0.5.0\n`, 'utf8');
-  fse.writeFileSync(path.join(projectPath, '.gitignore'), `__pycache__/\n*.pyc\nvenv/\n.venv/\ndb.sqlite3\n.env\n`, 'utf8');
-  writeManifest(projectPath, { frontend: null, backend: 'django', folderName: targetFolder });
+  console.log(`[rapidfire] Scaffolding standalone ${normBe.toUpperCase()} project in ${targetFolder}...`);
+  const backendPort = getBackendDefaultPort(normBe);
+  beAdapter(projectPath, targetFolder, { port: backendPort, isStandalone: true });
+  fse.writeFileSync(path.join(projectPath, '.gitignore'), `__pycache__/\n*.pyc\nvenv/\n.venv/\n.env\ntarget/\nnode_modules/\nbin/\nobj/\n`, 'utf8');
+  writeManifest(projectPath, { frontend: null, backend: normBe, folderName: targetFolder });
   await initGitAndHooks(projectPath, targetFolder, context);
 
-  if (context && (context.ask || context.rl || process.env.RAPIDFIRE_AUTO_VENV)) {
+  if (['fastapi', 'django', 'flask'].includes(normBe) && context && (context.ask || context.rl || process.env.RAPIDFIRE_AUTO_VENV)) {
     await maybePromptForVenv(projectPath, context);
   }
 
@@ -662,30 +911,38 @@ async function setupStandaloneDjango(projectPath, targetFolder, context = {}) {
     await maybePromptForGithubRepo(projectPath, targetFolder, context);
   }
 
-  reportSuccess(targetFolder, 'django');
+  reportSuccess(targetFolder, normBe);
+}
+
+async function setupStandaloneFastAPI(projectPath, targetFolder, context = {}) {
+  return await setupStandaloneBackend(projectPath, targetFolder, 'fastapi', context);
+}
+
+async function setupStandaloneDjango(projectPath, targetFolder, context = {}) {
+  return await setupStandaloneBackend(projectPath, targetFolder, 'django', context);
 }
 
 async function setupStandaloneFrontend(projectPath, targetFolder, frontend, context = {}) {
-  if (!commandExists('npm')) {
-    console.error('[rapidfire] Missing required tool: npm');
+  const normFe = normalizeFrontendName(frontend);
+  const feAdapter = getFrontendAdapter(normFe);
+  if (!feAdapter) {
+    console.error(`\x1b[31m[rapidfire] Unknown frontend: '${frontend}'.\x1b[0m`);
     return;
   }
   fse.ensureDirSync(projectPath);
-  console.log(`[rapidfire] Scaffolding standalone ${frontend.toUpperCase()} project in ${targetFolder}...`);
-
-  if (frontend === 'react') scaffoldViteReact(projectPath);
-  else if (frontend === 'vue') scaffoldViteVue(projectPath);
-  else if (frontend === 'svelte') scaffoldViteSvelte(projectPath);
-
-  writeManifest(projectPath, { frontend, backend: null, folderName: targetFolder });
+  console.log(`[rapidfire] Scaffolding standalone ${normFe.toUpperCase()} project in ${targetFolder}...`);
+  feAdapter(projectPath, { port: 3000, isStandalone: true, appName: targetFolder });
+  fse.writeFileSync(path.join(projectPath, '.gitignore'), `node_modules/\ndist/\n.env\n`, 'utf8');
+  writeManifest(projectPath, { frontend: normFe, backend: null, folderName: targetFolder });
   await initGitAndHooks(projectPath, targetFolder, context);
 
   if (context && (context.ask || context.rl || process.env.RAPIDFIRE_AUTO_GH)) {
     await maybePromptForGithubRepo(projectPath, targetFolder, context);
   }
 
-  reportSuccess(targetFolder, frontend);
+  reportSuccess(targetFolder, normFe);
 }
+
 
 function reportSuccess(folderName, stack) {
   console.log(`\n\x1b[32m╔════════════════════════════════════════════════════╗\x1b[0m`);
@@ -697,22 +954,9 @@ function reportSuccess(folderName, stack) {
   console.log(`  \x1b[36m• Inspect code & architecture:\x1b[0m    explain ${folderName}`);
   console.log(`  \x1b[36m• Navigate into folder:\x1b[0m           cd ${folderName}`);
   console.log(`  \x1b[35m• Save as preset anytime:\x1b[0m         save preset <name> ${folderName}`);
-
-  if (isGhInstalled()) {
-    if (isGhAuthenticated()) {
-      console.log(`  \x1b[32m• Push to GitHub in 1 command:\x1b[0m push -m "initial commit" (or git add . push -branch main -m "msg")`);
-    } else {
-      console.log(`  \x1b[33m• GitHub CLI present:\x1b[0m run "gh auth login" to enable automatic remote repo creation.`);
-    }
-  }
-
-  const isFrontend = stack.includes('+') || ['react', 'vue', 'svelte'].includes(stack);
-  if (isFrontend && isVercelInstalled()) {
-    const deployFolder = stack.includes('+') ? `${folderName}/frontend` : folderName;
-    console.log(`  \x1b[32m• Deploy to Vercel:\x1b[0m cd ${deployFolder} && vercel --prod (or run "deploy ${folderName}")`);
-  }
 }
 
 module.exports = {
-  handleSetup
+  handleSetup,
+  maybePromptForVenv
 };

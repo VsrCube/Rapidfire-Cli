@@ -233,6 +233,54 @@ async function runTests() {
     fse.removeSync(tempDirDual);
   }
 
+  console.log('[Test 8] Testing auto-detection of dynamic full-stack pairing (angular+rust)...');
+  const tempDirAngularRust = path.join('/tmp', `rapidfire_test_angrust_${Date.now()}`);
+  fse.ensureDirSync(tempDirAngularRust);
+  process.chdir(tempDirAngularRust);
+
+  try {
+    const angrustFolder = 'my_angular_rust_app';
+    await handleSetup(['angular+rust', angrustFolder]);
+
+    const projectDir = path.join(tempDirAngularRust, angrustFolder);
+    assert.ok(fse.existsSync(projectDir), 'Project root should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'frontend')), 'frontend directory should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'frontend', 'package.json')), 'frontend/package.json should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'frontend', 'tsconfig.json')), 'frontend/tsconfig.json should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'frontend', 'src', 'main.ts')), 'frontend/src/main.ts should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'frontend', 'src', 'app', 'app.component.ts')), 'frontend/src/app/app.component.ts should exist');
+
+    const fePkg = fse.readJsonSync(path.join(projectDir, 'frontend', 'package.json'));
+    assert.ok(fePkg.dependencies && fePkg.dependencies['@angular/core'], 'Angular frontend must depend on @angular/core');
+
+    assert.ok(fse.existsSync(path.join(projectDir, 'backend')), 'backend directory should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'backend', 'Cargo.toml')), 'backend/Cargo.toml should exist');
+    assert.ok(fse.existsSync(path.join(projectDir, 'backend', 'src', 'main.rs')), 'backend/src/main.rs should exist');
+
+    const cargoToml = fse.readFileSync(path.join(projectDir, 'backend', 'Cargo.toml'), 'utf8');
+    assert.ok(cargoToml.includes('axum'), 'Rust backend must depend on axum');
+    assert.ok(cargoToml.includes('tokio'), 'Rust backend must depend on tokio');
+
+    const mainRs = fse.readFileSync(path.join(projectDir, 'backend', 'src', 'main.rs'), 'utf8');
+    assert.ok(mainRs.includes('/api/health'), 'Rust backend should have /api/health route');
+    assert.ok(mainRs.includes('CorsLayer'), 'Rust backend should configure CORS');
+
+    const readme = fse.readFileSync(path.join(projectDir, 'README.md'), 'utf8');
+    assert.ok(readme.includes('cargo run'), 'README must instruct user to run cargo run');
+
+    const manifest = readManifest(projectDir);
+    assert.ok(manifest, 'Manifest should exist');
+    assert.strictEqual(manifest.frontend, 'angular');
+    assert.strictEqual(manifest.backend, 'rust');
+    assert.strictEqual(manifest.isFullstack, true);
+    assert.strictEqual(manifest.generationMode, 'dynamic');
+
+    console.log('✔ Auto-detection of dynamic fullstack pairing (angular+rust) scaffolded authentic Angular and Rust files.\n');
+  } finally {
+    process.chdir(origCwd);
+    fse.removeSync(tempDirAngularRust);
+  }
+
   console.log('======================================================');
   console.log('ALL DYNAMIC SCAFFOLDING TESTS PASSED FLAWLESSLY!');
   console.log('======================================================\n');

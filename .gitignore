@@ -13,3 +13,4 @@ all_you_should_know.md
 *.tgz
 md/
 .rapidfire/
+test/scratch*/

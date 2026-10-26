@@ -1,6 +1,3 @@
-const { hasFrontendAdapter } = require('./adapters/frontend');
-const { hasBackendAdapter } = require('./adapters/backend');
-
 const PREDEFINED_RECIPES = [
   'react',
   'vue',
@@ -16,6 +13,9 @@ const PREDEFINED_RECIPES = [
   'react+flask',
   'svelte+node'
 ];
+
+const COMPOSED_FRONTENDS = ['react', 'vue', 'svelte'];
+const COMPOSED_BACKENDS = ['fastapi', 'django', 'flask', 'express', 'node'];
 
 function planStack(stackInput) {
   if (!stackInput || typeof stackInput !== 'string') {
@@ -36,8 +36,8 @@ function planStack(stackInput) {
     const parts = normalized.split('+');
     if (parts.length === 2) {
       const [fe, be] = parts;
-      const feKnown = hasFrontendAdapter(fe);
-      const beKnown = hasBackendAdapter(be);
+      const feKnown = COMPOSED_FRONTENDS.includes(fe);
+      const beKnown = COMPOSED_BACKENDS.includes(be);
 
       if (feKnown && beKnown) {
         return {
@@ -60,7 +60,7 @@ function planStack(stackInput) {
     }
   }
 
-  if (hasFrontendAdapter(normalized)) {
+  if (COMPOSED_FRONTENDS.includes(normalized)) {
     return {
       tier: 'PREDEFINED',
       stack: normalized,
@@ -69,7 +69,7 @@ function planStack(stackInput) {
     };
   }
 
-  if (hasBackendAdapter(normalized)) {
+  if (COMPOSED_BACKENDS.includes(normalized)) {
     return {
       tier: 'PREDEFINED',
       stack: normalized,
@@ -89,3 +89,4 @@ module.exports = {
   PREDEFINED_RECIPES,
   planStack
 };
+

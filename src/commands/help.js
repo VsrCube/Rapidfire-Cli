@@ -42,17 +42,29 @@ ${bold}CONNECTED FULL-STACK RECIPES (Frontend + Backend):${reset}
   ${green}setup vue+node <folder>${reset}         Vue 3 (Vite) + Express Node.js backend
   ${green}setup vue+django <folder>${reset}       Vue 3 (Vite) + Django REST backend
   ${green}setup svelte+node <folder>${reset}      Svelte (Vite) + Express Node.js backend
+  ${green}setup angular+rust <folder>${reset}     Angular 18 (Signals) + Rust (Axum)
+  ${green}setup solid+fastapi <folder>${reset}    SolidJS + FastAPI
+  ${green}setup next+flask <folder>${reset}       Next.js + Flask
+  ${green}setup vue+hono <folder>${reset}         Vue 3 + Hono
+  ${green}setup svelte+go <folder>${reset}        Svelte + Go
 
 ${bold}STANDALONE FRONTENDS & BACKENDS:${reset}
   ${green}setup react <folder>${reset}           Standalone React (Vite) SPA
   ${green}setup vue <folder>${reset}             Standalone Vue 3 (Vite) SPA
   ${green}setup svelte <folder>${reset}          Standalone Svelte (Vite) SPA
+  ${green}setup angular <folder>${reset}         Standalone Angular 18 (Vite) SPA
+  ${green}setup solid <folder>${reset}           Standalone SolidJS (Vite) SPA
+  ${green}setup next <folder>${reset}            Standalone Next.js App
   ${green}setup fastapi <folder>${reset}          Standalone high-performance FastAPI backend
   ${green}setup django <folder>${reset}           Standalone Django backend with SQLite
+  ${green}setup rust <folder>${reset}             Standalone Rust (Axum) backend
+  ${green}setup go <folder>${reset}               Standalone Go backend
+  ${green}setup hono <folder>${reset}             Standalone Hono backend
 
-${bold}DYNAMIC & COMPOSED COMPOSITION:${reset}
-  ${green}setup <fe>+<be> <folder>${reset}        Arbitrary stack pairings with auto-connected frontend and backend
-  ${green}setup <unknown> <folder>${reset}        Dynamically scaffold any framework via AI/heuristic fallback
+${bold}UNIVERSAL COMPOSITION (12 FRONTENDS + 13 BACKENDS):${reset}
+  ${green}setup <fe>+<be> <folder>${reset}        Any pairing connected out of the box with CORS and /api/health
+  ${dim}Frontends: react, vue, svelte, angular, solid, preact, qwik, lit, astro, next, nuxt, sveltekit${reset}
+  ${dim}Backends:  fastapi, django, flask, express, hono, fastify, nest, koa, rust, go, ruby, php, dotnet${reset}
 
 ${bold}INTERACTIVE WIZARD:${reset}
   ${green}init [rapidfire]${reset}               Interactive scaffolding wizard with step-by-step prompts
@@ -173,7 +185,7 @@ ${bold}DESCRIPTION:${reset}
 
 ${bold}COMMAND SYNTAX:${reset}
   ${magenta}key <api-key>${reset}                 Save or update API key (auto-detects provider)
-  ${magenta}key model <model-name>${reset}        Override active model (e.g. "gpt-4o-mini", "gemini-1.5-flash")
+  ${magenta}key model <model-name>${reset}        Override active model (e.g. "gpt-4o-mini", "gemini-3.5-flash-lite")
   ${magenta}key status${reset}                    Show active provider, active model, masked key, and source
   ${magenta}key clear${reset}                     Securely remove stored API key credentials
 
@@ -184,7 +196,7 @@ ${bold}SUPPORTED PROVIDERS:${reset}
 
 ${bold}EXAMPLES:${reset}
   ${dim}$ key AIzaSyD...${reset}
-  ${dim}$ key model gemini-1.5-flash${reset}
+  ${dim}$ key model gemini-3.5-flash-lite${reset}
   ${dim}$ key status${reset}
   ${dim}$ key clear${reset}
 `);
@@ -214,24 +226,35 @@ ${bold}EXAMPLES:${reset}
       return;
     }
 
-    if (rawTopic === 'run' || rawTopic === 'start' || rawTopic === 'serve') {
+    if (rawTopic === 'run' || rawTopic === 'start' || rawTopic === 'serve' || rawTopic === 'stop' || rawTopic === 'kill') {
       console.log(`
 ${bold}${cyan}╔══════════════════════════════════════════════════════════════════╗
-║             RAPIDFIRE APPLICATION EXECUTION RUNNER               ║
+║             RAPIDFIRE APPLICATION EXECUTION & RUNNER             ║
 ╚══════════════════════════════════════════════════════════════════╝${reset}
 
 ${bold}DESCRIPTION:${reset}
-  Launch dev servers for connected full-stack microservices or standalone apps.
-  Automatically resolves backend (:8000/:5000) and frontend (:3000) ports and
-  activates local Python virtual environments (.venv).
+  Launch and manage dev servers for connected full-stack microservices or standalone apps.
+  Automatically detects dynamic runtime ports (e.g. shifts to :3001 if :3000 is occupied),
+  activates Python virtual environments (.venv), and provides clean process teardown.
 
 ${bold}COMMAND SYNTAX:${reset}
   ${green}run [folder]${reset}                   Launch dev servers (aliases: 'start', 'serve')
+  ${green}stop [port]${reset}                    Terminate dev servers or free specific port (alias: 'kill')
+
+${bold}PROCESS MANAGEMENT & TEARDOWN:${reset}
+  • ${bold}Stop Command:${reset} Type 'stop' or 'kill' to shut down all servers, or 'stop <port>' (e.g. 'kill 3000')
+  • ${bold}Already-Running Guard:${reset} Running 'run' multiple times detects active servers and avoids duplicate launches
+  • ${bold}Interactive Interrupt:${reset} Press Ctrl+C while dev servers are running to stop them and return to prompt
+  • ${bold}Clean Exit:${reset} Exiting RapidFire ('exit' / 'quit') automatically terminates any child servers
+  • ${bold}Dynamic Port Sync:${reset} Captures real runtime ports from stdout (e.g. :3001) instead of hardcoding
 
 ${bold}EXAMPLES:${reset}
   ${dim}$ run${reset}
   ${dim}$ run ./my-app${reset}
-  ${dim}$ start${reset}
+  ${dim}$ stop${reset}
+  ${dim}$ kill${reset}
+  ${dim}$ stop 3000${reset}
+  ${dim}$ kill :3001${reset}
 `);
       return;
     }
@@ -294,7 +317,7 @@ ${bold}AVAILABLE TOPICS:${reset}
   ${magenta}help explain${reset}                   Source file and directory tree architectural analysis
   ${magenta}help key${reset}                       AI provider & API key credentials management
   ${yellow}help presets${reset}                   Workspace structure serialization and restoration
-  ${green}help run${reset}                       Microservice dev server runner (aliases: start, serve)
+  ${green}help run / stop${reset}                 Microservice runner & process teardown (aliases: start, serve, kill)
   ${magenta}help ask / tell / suggest${reset}      Interactive AI generation, code preview, and Q&A
   ${cyan}help deploy${reset}                    Production Vercel deployment guardrails
 `);
@@ -309,7 +332,7 @@ ${bold}${cyan}╔═════════════════════
 ║                          Version ${version}                          ║
 ╚══════════════════════════════════════════════════════════════════╝${reset}
 
-${bold}PROJECT SCAFFOLDING RECIPES (7 FRAMEWORKS / 13 OPTIONS):${reset}
+${bold}PROJECT SCAFFOLDING RECIPES (12 FRONTENDS / 13 BACKENDS / UNIVERSAL PAIRINGS):${reset}
   ${cyan}Connected Full-Stack Recipes:${reset}
     ${green}setup react+fastapi <folder>${reset}   React (Vite) + FastAPI (Async Python)
     ${green}setup react+django <folder>${reset}    React (Vite) + Django REST backend with SQLite
@@ -319,18 +342,31 @@ ${bold}PROJECT SCAFFOLDING RECIPES (7 FRAMEWORKS / 13 OPTIONS):${reset}
     ${green}setup vue+node <folder>${reset}        Vue 3 (Vite) + Express Node.js backend
     ${green}setup vue+django <folder>${reset}      Vue 3 (Vite) + Django REST backend
     ${green}setup svelte+node <folder>${reset}     Svelte (Vite) + Express Node.js backend
+    ${green}setup angular+rust <folder>${reset}    Angular 18 (Signals) + Rust (Axum)
+    ${green}setup solid+fastapi <folder>${reset}   SolidJS + FastAPI
+    ${green}setup next+flask <folder>${reset}      Next.js + Flask
+    ${green}setup vue+hono <folder>${reset}        Vue 3 + Hono
+    ${green}setup svelte+go <folder>${reset}       Svelte + Go
 
   ${cyan}Standalone Frontends:${reset}
     ${green}setup react <folder>${reset}          Standalone React (Vite) project
     ${green}setup vue <folder>${reset}            Standalone Vue 3 (Vite) project
     ${green}setup svelte <folder>${reset}         Standalone Svelte (Vite) project
+    ${green}setup angular <folder>${reset}        Standalone Angular 18 (Vite) project
+    ${green}setup solid <folder>${reset}          Standalone SolidJS (Vite) project
+    ${green}setup next <folder>${reset}           Standalone Next.js project
 
   ${cyan}Standalone Backends:${reset}
     ${green}setup fastapi <folder>${reset}         Standalone high-performance FastAPI backend
     ${green}setup django <folder>${reset}          Standalone Django backend with SQLite
+    ${green}setup rust <folder>${reset}            Standalone Rust (Axum) backend
+    ${green}setup go <folder>${reset}              Standalone Go backend
+    ${green}setup hono <folder>${reset}            Standalone Hono backend
 
-  ${cyan}Dynamic & Composed Framework Scaffolding:${reset}
+  ${cyan}Universal Framework Pairings & Scaffolding:${reset}
     ${green}setup <fe>+<be> <folder>${reset}       Arbitrary connected full-stack combinations
+    ${dim}Frontends: react, vue, svelte, angular, solid, preact, qwik, lit, astro, next, nuxt, sveltekit${reset}
+    ${dim}Backends:  fastapi, django, flask, express, hono, fastify, nest, koa, rust, go, ruby, php, dotnet${reset}
     ${green}setup <unknown> <folder>${reset}       Dynamically scaffold any framework via AI/heuristic fallback
 
   ${cyan}Initialization:${reset}
@@ -349,7 +385,7 @@ ${bold}AI CODE GENERATION & ARCHITECTURE:${reset}
 
 ${bold}AI PROVIDER & API KEY CONFIGURATION:${reset}
   ${magenta}key <api-key>${reset}                 Save or update API key (auto-detects Groq, OpenAI, or Gemini)
-  ${magenta}key model <model-name>${reset}        Override active model (e.g. "key model gpt-4o-mini", "gemini-1.5-flash")
+  ${magenta}key model <model-name>${reset}        Override active model (e.g. "key model gpt-4o-mini", "gemini-3.5-flash-lite")
   ${magenta}key status${reset}                    Show active provider, model, masked key, and config source
   ${magenta}key clear${reset}                     Remove saved credentials from ~/.rapidfire/config.json
 
@@ -375,9 +411,11 @@ ${bold}GIT & GITHUB AUTOMATION:${reset}
 ${bold}PRODUCTION DEPLOYMENT:${reset}
   ${cyan}deploy vercel [folder]${reset}         Deploy frontend to Vercel production with clean working tree verification
 
-${bold}APPLICATION EXECUTION & RUNNER:${reset}
+${bold}APPLICATION EXECUTION & PROCESS RUNNER:${reset}
   ${green}run [folder]${reset}                    Launch microservice dev servers (FastAPI / Express + React / Vue / Svelte)
-                                Aliases: ${green}start${reset}, ${green}serve${reset}. Resolves ports (:8000/:5000 and :3000)
+                                Aliases: ${green}start${reset}, ${green}serve${reset}. Auto-detects runtime ports dynamically.
+  ${green}stop${reset}                            Stop all active background application dev servers and free ports
+                                Alias: ${green}kill${reset}. (Or press ${cyan}Ctrl+C${reset} during execution)
 
 ${bold}SESSION & UTILITY COMMANDS:${reset}
   ${cyan}help [command]${reset}                 Display this command reference or focused help (e.g. "help push")

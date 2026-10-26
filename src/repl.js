@@ -14,6 +14,7 @@ class RapidfireRepl {
     this.shell = new PersistentShell();
     this.rl = null;
     this.isPassthroughRunning = false;
+    this.isExecutingCommand = false;
     this.idleTimer = null;
     this.sessionCommands = [];
   }
@@ -150,6 +151,15 @@ class RapidfireRepl {
     });
 
     this.rl.on('SIGINT', () => {
+      this.isExecutingCommand = false;
+      try {
+        const { activeProcesses, stopProcesses } = require('./commands/run');
+        if (activeProcesses && activeProcesses.length > 0) {
+          stopProcesses();
+          this.prompt();
+          return;
+        }
+      } catch {}
       if (this.isPassthroughRunning) {
         this.shell.write('\x03');
         this.isPassthroughRunning = false;
@@ -184,6 +194,10 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
   }
 
   async handleLine(rawLine) {
+    if (this.isExecutingCommand) {
+      return;
+    }
+
     const line = rawLine.replace(/\x1b\[200~|\x1b\[201~/g, '').trim();
 
     if (!line) {
@@ -199,6 +213,7 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
     const matched = matchCommand(line);
 
     if (matched) {
+      this.isExecutingCommand = true;
       try {
         const result = await matched.run({ rl: this.rl, repl: this });
         if (result && result.exit) {
@@ -207,8 +222,10 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
         }
       } catch (err) {
         console.error(`[rapidfire] Error executing command '${matched.name}':`, err.message);
+      } finally {
+        this.isExecutingCommand = false;
+        this.prompt();
       }
-      this.prompt();
       return;
     }
 
@@ -264,6 +281,10 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
     if (this.idleTimer) clearTimeout(this.idleTimer);
     try {
       saveSessionHistory(this.sessionCommands);
+    } catch { }
+    try {
+      const { stopProcesses } = require('./commands/run');
+      stopProcesses();
     } catch { }
     if (this.shell) {
       this.shell.kill();

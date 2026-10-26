@@ -22,6 +22,12 @@ function runTests() {
   const initCol = highlightSyntax('init git');
   assert(initCol.includes('\x1b[93minit\x1b[0m'), 'init should be yellow');
   assert(initCol.includes('\x1b[36mgit\x1b[0m'), 'git subcommand should be cyan');
+
+  const stopCol = highlightSyntax('stop');
+  assert(stopCol.includes('\x1b[93mstop\x1b[0m'), 'stop should be yellow');
+
+  const killCol = highlightSyntax('kill');
+  assert(killCol.includes('\x1b[93mkill\x1b[0m'), 'kill should be yellow');
   console.log('✓ Command and subcommand highlighting verified.');
 
   console.log('[Test 2] Testing git subcommands (add, commit, status in cyan)...');
@@ -61,6 +67,9 @@ function runTests() {
 
   const [keyHits] = completer('key ');
   assert(keyHits.includes('key status'), 'Tab completion should find key status');
+
+  const [helpHits] = completer('help st');
+  assert(helpHits.includes('help stop'), 'Tab completion should find help stop');
   console.log('✓ Tab autocompleter verified.');
 
   console.log('[Test 5] Testing RapidfireRepl keystroke real-time refresh hook...');

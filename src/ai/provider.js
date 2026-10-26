@@ -51,7 +51,7 @@ function getAskHistory(targetRoot) {
 
 function detectProvider(apiKey) {
   if (!apiKey || typeof apiKey !== 'string') {
-    return { provider: 'gemini', model: 'gemini-2.5-flash', name: 'Gemini' };
+    return { provider: 'gemini', model: 'gemini-3.5-flash-lite', name: 'Gemini' };
   }
 
   const key = apiKey.trim();
@@ -76,7 +76,7 @@ function detectProvider(apiKey) {
 
   return {
     provider: 'gemini',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.5-flash-lite',
     endpoint: 'https://generativelanguage.googleapis.com',
     name: 'Gemini'
   };
@@ -228,49 +228,48 @@ function sendOpenAiRequest({ endpoint, apiKey, model, messages, systemInstructio
   });
 }
 
+const GEMINI_FALLBACK_MODELS = [
+  'gemini-3.5-flash-lite',
+  'gemini-flash-lite-latest',
+  'gemini-3.5-flash',
+  'gemini-2.5-flash'
+];
+
 async function queryGemini({ apiKey, modelName, prompt, systemInstruction, history = [], isChat = false }) {
   const genAI = new GoogleGenerativeAI(apiKey);
-
-  if (isChat) {
-    const historyToUse = history.slice(-10);
-    try {
-      const model = genAI.getGenerativeModel({
-        model: modelName || 'gemini-2.5-flash',
-        systemInstruction
-      });
-      const chat = model.startChat({ history: historyToUse });
-      const result = await chat.sendMessage(prompt);
-      const response = await result.response;
-      return response.text();
-    } catch {
-      const fallbackModel = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        systemInstruction
-      });
-      const chat = fallbackModel.startChat({ history: historyToUse });
-      const result = await chat.sendMessage(prompt);
-      const response = await result.response;
-      return response.text();
+  const candidateModels = [];
+  if (modelName) candidateModels.push(modelName);
+  for (const m of GEMINI_FALLBACK_MODELS) {
+    if (!candidateModels.includes(m)) {
+      candidateModels.push(m);
     }
   }
 
-  try {
-    const model = genAI.getGenerativeModel({
-      model: modelName || 'gemini-2.5-flash',
-      systemInstruction
-    });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
-  } catch {
-    const fallbackModel = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction
-    });
-    const result = await fallbackModel.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+  let lastError;
+  for (const targetModel of candidateModels) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: targetModel,
+        systemInstruction
+      });
+
+      if (isChat) {
+        const historyToUse = history.slice(-10);
+        const chat = model.startChat({ history: historyToUse });
+        const result = await chat.sendMessage(prompt);
+        const response = await result.response;
+        return response.text();
+      }
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
+    } catch (err) {
+      lastError = err;
+    }
   }
+
+  throw lastError;
 }
 
 async function queryAi({ prompt, systemInstruction, history = [], isChat = false }) {
@@ -317,6 +316,9 @@ function formatErrorMessage(err) {
   }
   if (msg.includes('API_KEY_INVALID') || msg.includes('invalid api key') || msg.includes('401')) {
     return 'AI API key is invalid or unauthorized. Please verify your credentials with "key status" or "key <new_key>".';
+  }
+  if (msg.includes('429') || msg.includes('quota') || msg.includes('Too Many Requests') || msg.includes('RESOURCE_EXHAUSTED')) {
+    return 'AI API daily rate limit or free-tier quota exceeded. Please check your Gemini usage at https://ai.dev/rate-limit or set a new key with "key <api_key>".';
   }
   return `AI query failed: ${msg.split('\n')[0]}`;
 }

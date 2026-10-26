@@ -85,6 +85,13 @@ async function runTests() {
   assert.strictEqual(promptCount, 8, 'Prompt must be called on empty line Enter');
   assert.strictEqual(repl.isPassthroughRunning, false, 'isPassthroughRunning must be reset on empty line Enter');
 
+  console.log('[Test 9] Testing isExecutingCommand ignores stray enter during execution...');
+  repl.isExecutingCommand = true;
+  await repl.handleLine('');
+  assert.strictEqual(promptCount, 8, 'Prompt must NOT fire on stray enter while command is executing');
+  repl.isExecutingCommand = false;
+  console.log('✓ Stray enter ignored during command execution verified!');
+
   console.log('✓ All REPL prompt return test scenarios verified successfully!');
 
   repl.shutdown();

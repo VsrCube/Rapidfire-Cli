@@ -26,11 +26,23 @@ function findRepoRoot(startDir = process.cwd()) {
   let current = path.resolve(startDir);
   const root = path.parse(current).root;
 
+  let candidate = current;
+  while (candidate && candidate !== root && candidate !== home) {
+    if (
+      fs.existsSync(path.join(candidate, '.rapidfire.json')) ||
+      fs.existsSync(path.join(candidate, '.rapidfire')) ||
+      fs.existsSync(path.join(candidate, '.git'))
+    ) {
+      return candidate;
+    }
+    const parent = path.dirname(candidate);
+    if (parent === candidate) break;
+    candidate = parent;
+  }
+
   while (current && current !== root && current !== home) {
     if (
-      fs.existsSync(path.join(current, '.git')) ||
       fs.existsSync(path.join(current, 'package.json')) ||
-      fs.existsSync(path.join(current, '.rapidfire.json')) ||
       fs.existsSync(path.join(current, 'pyproject.toml')) ||
       fs.existsSync(path.join(current, 'requirements.txt')) ||
       fs.existsSync(path.join(current, 'Cargo.toml'))

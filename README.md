@@ -30,7 +30,7 @@ RapidFire is a lightweight terminal overlay and interactive developer environmen
 | 10 | **Unified Git & GitHub Automation** | Single-command staging, commit, push, branch management & auto `gh` repo | [View](#unified-git--github-automation) |
 | 11 | **Bidirectional History & Highlighting** | Bidirectional shell history sync (Bash/Zsh/PowerShell), live syntax highlighting | [View](#bidirectional-terminal-history--real-time-highlighting) |
 | 12 | **Command Reference** | Comprehensive quick-reference table for all RapidFire commands | [View](#command-reference) |
-| 13 | **Testing & Verification** | 30 automated test suites, simulated remotes, security audit checks | [View](#testing--verification) |
+| 13 | **Testing & Verification** | 31 automated test suites, simulated remotes, security audit checks | [View](#testing--verification) |
 | 14 | **License** | Open-source MIT license details | [View](#license) |
 
 ---
@@ -455,7 +455,7 @@ RapidFire features a pluggable AI subsystem with automatic key detection. Just p
 
 * **Groq** (`gsk_...`) -> Free-tier `llama-3.3-70b-versatile`
 * **OpenAI** (`sk-...`) -> Fast `gpt-4o-mini`
-* **Gemini** (`AIza...`) -> Fast `gemini-2.5-flash`
+* **Gemini** (`AIza...`) -> Fast `gemini-3.5-flash-lite`
 * **Ollama / Custom** -> Local or custom OpenAI-compatible endpoints (`http://localhost:11434/v1`)
 
 ```bash
@@ -659,9 +659,9 @@ npm test
 
 ```text
 ======================================================
-Summary: 30 passed, 0 failed (30 total)
+Summary: 31 passed, 0 failed (31 total)
 ======================================================
-ALL 30 TEST SUITES PASSED FLAWLESSLY!
+ALL 31 TEST SUITES PASSED FLAWLESSLY!
 ```
 
 ---

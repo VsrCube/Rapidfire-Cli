@@ -9,6 +9,7 @@ const { handleKey } = require('./key');
 const { handleExplain } = require('./explain');
 const { handleOverview } = require('./overview');
 const { handlePush } = require('./push');
+const { runInitWizard } = require('./wizard');
 
 function matchCommand(line) {
   const trimmed = line.trim();
@@ -33,9 +34,19 @@ function matchCommand(line) {
   if (cmd === 'run' || cmd === 'start' || cmd === 'serve') {
     return {
       name: 'run',
-      run: async () => {
+      run: async (context) => {
         const { handleRun } = require('./run');
-        return handleRun(tokens.slice(1));
+        return await handleRun(tokens.slice(1), context);
+      }
+    };
+  }
+
+  if (cmd === 'stop' || cmd === 'kill' || cmd === 'stopp' || cmd === 'sotp' || cmd === 'stp') {
+    return {
+      name: 'stop',
+      run: async () => {
+        const { stopProcesses } = require('./run');
+        return stopProcesses(tokens.slice(1));
       }
     };
   }
@@ -128,13 +139,10 @@ function matchCommand(line) {
         run: async (context) => handleSetup(tokens.slice(1), context)
       };
     }
+    const wizardArgs = tokens.slice(1).filter((t) => t.toLowerCase() !== 'rapidfire');
     return {
       name: 'init',
-      run: async () => {
-        console.log(`\n\x1b[36m[rapidfire]\x1b[0m RapidFire is active!`);
-        console.log(`To scaffold a project, use: \x1b[33msetup <recipe> <folder>\x1b[0m`);
-        console.log(`Type \x1b[36mhelp\x1b[0m to view all supported framework recipes.\n`);
-      }
+      run: async (context) => runInitWizard(context, wizardArgs)
     };
   }
 
@@ -148,7 +156,7 @@ function matchCommand(line) {
   if (cmd === 'deploy') {
     return {
       name: 'deploy',
-      run: async () => handleDeploy(tokens.slice(1))
+      run: async (context) => handleDeploy(tokens.slice(1), context)
     };
   }
 
@@ -237,6 +245,9 @@ const COMMON_SUGGESTIONS = {
   sugest: 'suggest',
   asl: 'ask',
   deply: 'deploy',
+  stopp: 'stop',
+  sotp: 'stop',
+  stp: 'stop',
   psuh: 'push',
   puhs: 'push',
   phsu: 'push',

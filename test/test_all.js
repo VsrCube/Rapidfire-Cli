@@ -33,7 +33,10 @@ const testScripts = [
   'test/test_run_command.js',
   'test/test_repo_memory.js',
   'test/test_explain_markdown_export.js',
-  'test/test_overview.js'
+  'test/test_explain_subfolder_export.js',
+  'test/test_overview.js',
+  'test/test_init_wizard.js',
+  'test/test_universal_frameworks.js'
 ];
 
 console.log('\n======================================================');

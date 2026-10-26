@@ -20,6 +20,9 @@ function getParentGitRepo(targetPath) {
 
     const toplevel = runCapture('git rev-parse --show-toplevel', { cwd: parentDir }).trim();
     if (toplevel && path.resolve(toplevel) !== absTarget) {
+      if (path.resolve(toplevel) === path.resolve(require('os').homedir())) {
+        return null;
+      }
       return toplevel;
     }
   } catch {}

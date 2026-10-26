@@ -6,6 +6,10 @@ const RAPIDFIRE_COMMANDS = [
   'explain',
   'overview',
   'run',
+  'start',
+  'serve',
+  'stop',
+  'kill',
   'ask',
   'suggest',
   'tell',
@@ -189,11 +193,18 @@ function createCompleter() {
     }
 
     if (cmd === 'help') {
-      const topics = ['setup', 'push', 'overview', 'explain', 'key', 'presets', 'run', 'ask', 'tell', 'suggest', 'deploy', 'help'];
+      const topics = ['setup', 'push', 'overview', 'explain', 'key', 'presets', 'run', 'stop', 'kill', 'ask', 'tell', 'suggest', 'deploy', 'help'];
       const currentTopic = tokens[1] ? tokens[1].toLowerCase() : '';
       const hits = topics.filter((t) => t.startsWith(currentTopic));
       const completions = hits.map((h) => `help ${h}`);
       return [completions.length ? completions : topics.map((t) => `help ${t}`), line];
+    }
+
+    if (cmd === 'stop' || cmd === 'kill') {
+      const sub = tokens[1] ? tokens[1].toLowerCase() : '';
+      const commonPorts = ['3000', '3001', '5000', '8000'];
+      const hits = commonPorts.filter((p) => p.startsWith(sub)).map((p) => `${cmd} ${p}`);
+      return [hits.length ? hits : commonPorts.map((p) => `${cmd} ${p}`), line];
     }
 
     return [[], line];

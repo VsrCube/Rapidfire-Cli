@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { explainFile, explainDirectory } = require('../ai/gemini');
 const { findRepoRoot, recordExplanationEntry } = require('../utils/repoMemory');
 const { formatMarkdownForTerminal, renderTerminalBox } = require('./ask');
@@ -38,8 +39,9 @@ async function handleExplain(args) {
     return result;
   }
 
-  const targetDir = isDir ? targetPath : path.dirname(targetPath);
-  const mdDir = path.join(targetDir, 'md');
+  const isInsideCwd = targetPath.startsWith(process.cwd()) && process.cwd() !== os.homedir();
+  const repoRoot = isInsideCwd ? findRepoRoot(process.cwd()) : findRepoRoot(targetPath);
+  const mdDir = path.join(repoRoot, 'md');
   if (!fs.existsSync(mdDir)) {
     fs.mkdirSync(mdDir, { recursive: true });
   }
@@ -47,7 +49,6 @@ async function handleExplain(args) {
   const mdFile = path.join(mdDir, 'explanation.md');
   const mdAltFile = path.join(mdDir, 'explaination.md');
 
-  const repoRoot = findRepoRoot(targetDir);
   const now = new Date();
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const rawBase = (displayTarget === '.' || !displayTarget)

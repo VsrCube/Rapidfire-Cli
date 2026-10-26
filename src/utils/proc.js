@@ -10,8 +10,11 @@ function ensurePath() {
   const paths = currentPath.split(delimiter);
 
   const candidateDirs = [
+    path.join(os.homedir(), '.cargo', 'bin'),
     path.join(os.homedir(), '.local', 'bin'),
-    path.join(os.homedir(), 'bin')
+    path.join(os.homedir(), 'bin'),
+    path.join(os.homedir(), 'go', 'bin'),
+    '/usr/local/bin'
   ];
 
   if (isWindows) {
@@ -173,11 +176,36 @@ function hasNpm() {
   return commandExists('npm');
 }
 
+function hasRust() {
+  ensurePath();
+  return commandExists('cargo') || commandExists('rustc');
+}
+
+function hasGo() {
+  ensurePath();
+  return commandExists('go');
+}
+
+function hasDotnet() {
+  ensurePath();
+  return commandExists('dotnet');
+}
+
+function hasRuby() {
+  ensurePath();
+  return commandExists('ruby');
+}
+
+function hasPhp() {
+  ensurePath();
+  return commandExists('php');
+}
+
 function getPythonInstallInstructions() {
   if (process.platform === 'win32') {
-    return '  • Windows: Run "winget install Python.Python.3.12" or download from https://python.org';
+    return '  • Windows:       Run "winget install Python.Python.3.12" or download from https://python.org';
   } else if (process.platform === 'darwin') {
-    return '  • macOS:   Run "brew install python" or download from https://python.org';
+    return '  • macOS:         Run "brew install python" or download from https://python.org';
   } else {
     return '  • Debian/Ubuntu: sudo apt update && sudo apt install -y python3 python3-pip python3-venv\n  • Fedora/RHEL:   sudo dnf install -y python3 python3-pip\n  • Arch Linux:    sudo pacman -S python python-pip';
   }
@@ -185,15 +213,100 @@ function getPythonInstallInstructions() {
 
 function getNodeInstallInstructions() {
   if (process.platform === 'win32') {
-    return '  • Windows: Run "winget install OpenJS.NodeJS.LTS" or download from https://nodejs.org';
+    return '  • Windows:       Run "winget install OpenJS.NodeJS.LTS" or download from https://nodejs.org';
   } else if (process.platform === 'darwin') {
-    return '  • macOS:   Run "brew install node" or download from https://nodejs.org';
+    return '  • macOS:         Run "brew install node" or download from https://nodejs.org';
   } else {
     return '  • Debian/Ubuntu: sudo apt update && sudo apt install -y nodejs npm (or via nvm: https://github.com/nvm-sh/nvm)\n  • Fedora/RHEL:   sudo dnf install -y nodejs npm\n  • Arch Linux:    sudo pacman -S nodejs npm';
   }
 }
 
-function checkPrerequisites({ requiresNode = false, requiresPython = false, requiresDjango = false } = {}) {
+function getRustInstallInstructions() {
+  if (process.platform === 'win32') {
+    return '  • Windows:       Run "winget install Rustlang.Rustup" or download from https://rustup.rs';
+  } else if (process.platform === 'darwin') {
+    return '  • macOS:         Run "brew install rust" or "curl --proto \'=https\' --tlsv1.2 -sSf https://sh.rustup.rs | sh"';
+  } else {
+    return '  • Recommended:   curl --proto \'=https\' --tlsv1.2 -sSf https://sh.rustup.rs | sh\n  • Arch Linux:    sudo pacman -S rust\n  • Debian/Ubuntu: sudo apt install -y cargo rustc\n  • Fedora/RHEL:   sudo dnf install -y cargo rust';
+  }
+}
+
+function getGoInstallInstructions() {
+  if (process.platform === 'win32') {
+    return '  • Windows:       Run "winget install GoLang.Go" or download from https://go.dev/dl/';
+  } else if (process.platform === 'darwin') {
+    return '  • macOS:         Run "brew install go" or download from https://go.dev/dl/';
+  } else {
+    return '  • Download from: https://go.dev/doc/install\n  • Arch Linux:    sudo pacman -S go\n  • Debian/Ubuntu: sudo apt install -y golang-go\n  • Fedora/RHEL:   sudo dnf install -y golang';
+  }
+}
+
+function getDotnetInstallInstructions() {
+  if (process.platform === 'win32') {
+    return '  • Windows:       Run "winget install Microsoft.DotNet.SDK.8" or download from https://dotnet.microsoft.com/download';
+  } else if (process.platform === 'darwin') {
+    return '  • macOS:         Run "brew install dotnet-sdk" or download from https://dotnet.microsoft.com/download';
+  } else {
+    return '  • Download from: https://dotnet.microsoft.com/download\n  • Arch Linux:    sudo pacman -S dotnet-sdk\n  • Debian/Ubuntu: sudo apt install -y dotnet-sdk-8.0\n  • Fedora/RHEL:   sudo dnf install -y dotnet-sdk-8.0';
+  }
+}
+
+function getRubyInstallInstructions() {
+  if (process.platform === 'win32') {
+    return '  • Windows:       Run "winget install RubyInstallerTeam.Ruby" or download from https://rubyinstaller.org';
+  } else if (process.platform === 'darwin') {
+    return '  • macOS:         Run "brew install ruby"';
+  } else {
+    return '  • Arch Linux:    sudo pacman -S ruby\n  • Debian/Ubuntu: sudo apt install -y ruby-full\n  • Fedora/RHEL:   sudo dnf install -y ruby';
+  }
+}
+
+function getPhpInstallInstructions() {
+  if (process.platform === 'win32') {
+    return '  • Windows:       Download from https://windows.php.net/download/';
+  } else if (process.platform === 'darwin') {
+    return '  • macOS:         Run "brew install php"';
+  } else {
+    return '  • Arch Linux:    sudo pacman -S php\n  • Debian/Ubuntu: sudo apt install -y php\n  • Fedora/RHEL:   sudo dnf install -y php';
+  }
+}
+
+function getToolInstallHint(toolName) {
+  const name = String(toolName || '').toLowerCase().trim();
+  if (name.includes('rust') || name.includes('cargo') || name.includes('axum') || name.includes('actix')) {
+    return getRustInstallInstructions();
+  }
+  if (name.includes('go') || name.includes('gin') || name.includes('golang')) {
+    return getGoInstallInstructions();
+  }
+  if (name.includes('dotnet') || name.includes('csharp') || name === 'cs' || name === '.net') {
+    return getDotnetInstallInstructions();
+  }
+  if (name.includes('python') || name.includes('fastapi') || name.includes('flask') || name.includes('django')) {
+    return getPythonInstallInstructions();
+  }
+  if (name.includes('ruby') || name.includes('sinatra')) {
+    return getRubyInstallInstructions();
+  }
+  if (name.includes('php')) {
+    return getPhpInstallInstructions();
+  }
+  if (name.includes('node') || name.includes('npm')) {
+    return getNodeInstallInstructions();
+  }
+  return null;
+}
+
+function checkPrerequisites({
+  requiresNode = false,
+  requiresPython = false,
+  requiresDjango = false,
+  requiresRust = false,
+  requiresGo = false,
+  requiresDotnet = false,
+  requiresRuby = false,
+  requiresPhp = false
+} = {}) {
   const missing = [];
   const instructions = [];
 
@@ -215,6 +328,41 @@ function checkPrerequisites({ requiresNode = false, requiresPython = false, requ
     if (hasPython() && !commandExists('django-admin')) {
       missing.push('Django (django-admin)');
       instructions.push('  • Install Django: Run "pip install django" (or "python3 -m pip install django")');
+    }
+  }
+
+  if (requiresRust) {
+    if (!hasRust()) {
+      missing.push('Rust (cargo)');
+      instructions.push(getRustInstallInstructions());
+    }
+  }
+
+  if (requiresGo) {
+    if (!hasGo()) {
+      missing.push('Go');
+      instructions.push(getGoInstallInstructions());
+    }
+  }
+
+  if (requiresDotnet) {
+    if (!hasDotnet()) {
+      missing.push('.NET SDK (dotnet)');
+      instructions.push(getDotnetInstallInstructions());
+    }
+  }
+
+  if (requiresRuby) {
+    if (!hasRuby()) {
+      missing.push('Ruby');
+      instructions.push(getRubyInstallInstructions());
+    }
+  }
+
+  if (requiresPhp) {
+    if (!hasPhp()) {
+      missing.push('PHP');
+      instructions.push(getPhpInstallInstructions());
     }
   }
 
@@ -241,7 +389,18 @@ module.exports = {
   hasPython,
   hasNode,
   hasNpm,
+  hasRust,
+  hasGo,
+  hasDotnet,
+  hasRuby,
+  hasPhp,
   getPythonInstallInstructions,
   getNodeInstallInstructions,
+  getRustInstallInstructions,
+  getGoInstallInstructions,
+  getDotnetInstallInstructions,
+  getRubyInstallInstructions,
+  getPhpInstallInstructions,
+  getToolInstallHint,
   checkPrerequisites
 };
