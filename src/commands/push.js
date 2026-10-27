@@ -291,7 +291,16 @@ async function handlePush(rawArgs, context = {}) {
     console.log(`${cyan}[rapidfire-git] Committing:${reset} "${commitMessage}"`);
     try {
       const sanitizedMsg = commitMessage.replace(/"/g, '\\"');
-      run(`git commit -m "${sanitizedMsg}"`, { cwd });
+      let authorFlags = '';
+      try {
+        const configuredName = runCapture('git config user.name', { cwd }).trim();
+        if (!configuredName) {
+          authorFlags = '-c user.name="Rapidfire" -c user.email="rapidfire@local" ';
+        }
+      } catch {
+        authorFlags = '-c user.name="Rapidfire" -c user.email="rapidfire@local" ';
+      }
+      run(`git ${authorFlags}commit -m "${sanitizedMsg}"`, { cwd });
       commitMade = true;
     } catch (commitErr) {
       console.error(`${red}[rapidfire-git] Commit failed:${reset} ${commitErr.message}`);

@@ -107,7 +107,7 @@ class RapidfireRepl {
       }
 
       if (chunk) {
-        chunk = chunk.replace(/;\s*echo\s+["']?__RAPIDFIRE_DONE__["']?/g, '');
+        chunk = chunk.replace(/;\s*(?:Write-Output\s+\("__RAPIDFIRE"\s*\+\s*"_DONE__"\)|echo\s+["']?__RAPIDFIRE["']?["']?_DONE__["']?|echo\s+["']?__RAPIDFIRE_DONE__["']?)/g, '');
       }
 
       let hasSentinel = false;
@@ -242,7 +242,10 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
     this.expectedEcho = line;
     if (this.idleTimer) clearTimeout(this.idleTimer);
 
-    this.shell.write(`${line}; echo "${RAPIDFIRE_DONE_SENTINEL}"`);
+    const sentinelCmd = (this.shell && this.shell.isPowerShell)
+      ? '; Write-Output ("__RAPIDFIRE" + "_DONE__")'
+      : '; echo "__RAPIDFIRE""_DONE__"';
+    this.shell.write(`${line}${sentinelCmd}`);
   }
 
   handleCdSync(line) {

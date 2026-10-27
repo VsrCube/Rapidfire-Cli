@@ -17,7 +17,11 @@ async function runTests() {
     console.log('[Test 1] Testing nested Git prevention inside existing repository...');
     const parentRepo = path.join(tmpRoot, 'my_monorepo');
     fse.ensureDirSync(parentRepo);
-    run('git init -b main', { cwd: parentRepo, stdio: 'ignore' });
+    try {
+      run('git init -b main', { cwd: parentRepo, stdio: 'ignore' });
+    } catch {
+      run('git init', { cwd: parentRepo, stdio: 'ignore' });
+    }
     run('git config user.name "Tester"', { cwd: parentRepo, stdio: 'ignore' });
     run('git config user.email "tester@test.com"', { cwd: parentRepo, stdio: 'ignore' });
 

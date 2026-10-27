@@ -61,7 +61,7 @@ function resolveShell() {
   if (isWindows) {
     return {
       shell: 'powershell.exe',
-      args: ['-NoLogo', '-NoProfile', '-Command', '-']
+      args: ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass']
     };
   }
 
@@ -77,7 +77,7 @@ function resolveShell() {
   if (userShell.includes('pwsh') || userShell.includes('powershell')) {
     return {
       shell: userShell,
-      args: ['-NoLogo', '-NoProfile', '-Command', '-']
+      args: ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass']
     };
   }
   return {
@@ -129,7 +129,7 @@ class PersistentShell {
     }
 
     if (!this.ptyProcess) {
-      const finalArgs = isPowerShell ? ['-NoLogo', '-NoProfile', '-Command', '-'] : args;
+      const finalArgs = isPowerShell ? ['-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass'] : args;
       const cpProc = spawn(shell, finalArgs, {
         cwd: process.cwd(),
         env: process.env,

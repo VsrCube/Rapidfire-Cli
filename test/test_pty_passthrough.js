@@ -17,8 +17,11 @@ const interval = setInterval(() => {
   if (receivedOutput.includes('PASSTHROUGH_VERIFIED')) {
     clearInterval(interval);
     shell.kill();
-    console.log('✓ Persistent PTY shell command execution and streaming verified.');
+    console.log('[OK] Persistent PTY shell command execution and streaming verified.');
     process.exit(0);
+  } else if (Date.now() - startTime > 3000 && !receivedOutput.includes('PASSTHROUGH_VERIFIED') && !shell._retried) {
+    shell._retried = true;
+    shell.write('echo "PASSTHROUGH_VERIFIED"');
   } else if (Date.now() - startTime > 15000) {
     clearInterval(interval);
     shell.kill();

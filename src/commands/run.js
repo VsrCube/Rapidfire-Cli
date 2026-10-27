@@ -46,6 +46,9 @@ function resolvePythonCmd(dir) {
 }
 
 function openBrowser(url) {
+  if (process.env.CI || process.env.NODE_ENV === 'test' || process.env.RAPIDFIRE_SKIP_BROWSER === '1') {
+    return;
+  }
   const startCmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
   exec(`${startCmd} ${url}`, () => {});
 }
