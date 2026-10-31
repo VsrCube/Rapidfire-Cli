@@ -35,7 +35,7 @@ function clearAskHistory(targetRoot) {
   try {
     const root = targetRoot || findRepoRoot(process.cwd());
     if (root) clearRepoMemory(root);
-  } catch {}
+  } catch { }
 }
 
 function getAskHistory(targetRoot) {
@@ -45,7 +45,7 @@ function getAskHistory(targetRoot) {
     if (persisted && persisted.length > 0) {
       return persisted;
     }
-  } catch {}
+  } catch { }
   return askHistory;
 }
 
@@ -91,7 +91,7 @@ function readEnvFileKey() {
       if (match && match[1]) {
         return match[1].trim();
       }
-    } catch {}
+    } catch { }
   }
   return null;
 }
@@ -124,8 +124,14 @@ function getActiveAiConfig() {
   const detected = detectProvider(key);
 
   const userConfig = getUserConfig() || {};
-  const activeProvider = userConfig.provider || detected.provider;
-  const activeModel = userConfig.model || detected.model;
+  const activeProvider = (userConfig.provider || detected.provider).trim();
+  let activeModel = userConfig.model || detected.model;
+  //fix 1 : yeh purane hardcoded gemini 1.5-flash ko 3.5 pe set kar dega.
+  if (activeModel.includes('1.5-flash')) {
+    activeModel = 'gemini-3.5-flash-lite';
+  }
+  // FIX 2: Trailing spaces aur newlines hata do taaki API 404 na de
+  activeModel = activeModel.trim();
 
   let source = 'Not configured';
   if (userConfig.apiKey || userConfig.geminiApiKey) {
@@ -208,7 +214,7 @@ function sendOpenAiRequest({ endpoint, apiKey, model, messages, systemInstructio
             try {
               const errParsed = JSON.parse(data);
               errorMsg = errParsed.error?.message || errorMsg;
-            } catch {}
+            } catch { }
             reject(new Error(`AI Provider Error (${res.statusCode}): ${errorMsg}`));
           }
         });
@@ -756,7 +762,7 @@ function fallbackExplainFile(filePath) {
       jsonSummary = `  • Top-level configuration keys: ${keys.slice(0, 10).join(', ')}${keys.length > 10 ? '...' : ''}\n`;
       if (parsed.name) jsonSummary += `  • Package name: ${parsed.name} (version: ${parsed.version || 'unversioned'})\n`;
       if (parsed.scripts) jsonSummary += `  • Defined npm scripts: ${Object.keys(parsed.scripts).join(', ')}\n`;
-    } catch {}
+    } catch { }
   }
 
   let text = `======================================================================\n`;
@@ -1075,13 +1081,13 @@ async function explainDirectory(dirPath) {
     try {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
       manifestSnippet += `package.json: name="${pkg.name}", scripts=${JSON.stringify(Object.keys(pkg.scripts || {}))}, deps=${JSON.stringify(Object.keys(pkg.dependencies || {}))}\n`;
-    } catch {}
+    } catch { }
   }
   const reqPath = path.join(resolved, 'requirements.txt');
   if (fs.existsSync(reqPath)) {
     try {
       manifestSnippet += `requirements.txt: ${fs.readFileSync(reqPath, 'utf8').slice(0, 300)}\n`;
-    } catch {}
+    } catch { }
   }
 
   const prompt = `You are RapidFire CLI's codebase architecture explainer. Analyze and explain this directory architecture for a developer:
@@ -1199,7 +1205,7 @@ function fallbackRepoOverview(repoPath, options = {}) {
   if (fs.existsSync(testDirPath)) {
     try {
       testFileCount = fs.readdirSync(testDirPath).filter(f => f.endsWith('.js') || f.endsWith('.py') || f.endsWith('.ts')).length;
-    } catch {}
+    } catch { }
   }
 
   const title = isCritic ? `# Architectural Critique: ${pkgName}` : `# Repository Overview: ${pkgName} (v${pkgVersion})`;
