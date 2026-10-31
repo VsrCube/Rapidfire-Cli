@@ -7,15 +7,16 @@ try {
   CURRENT_VERSION = require('../../package.json').version;
 } catch {}
 
-function writeManifest(projectDir, { frontend, backend, folderName, generationMode }) {
+function writeManifest(projectDir, props = {}) {
   const manifestPath = path.join(projectDir, MANIFEST_FILENAME);
   const data = {
-    frontend: frontend || null,
-    backend: backend || null,
-    folderName: folderName || path.basename(projectDir),
-    generationMode: generationMode || 'predefined',
+    frontend: props.frontend || null,
+    backend: props.backend || null,
+    folderName: props.folderName || path.basename(projectDir),
+    generationMode: props.generationMode || 'predefined',
     createdAt: new Date().toISOString(),
-    rapidfireVersion: CURRENT_VERSION
+    rapidfireVersion: CURRENT_VERSION,
+    ...props
   };
 
   fse.writeJsonSync(manifestPath, data, { spaces: 2 });

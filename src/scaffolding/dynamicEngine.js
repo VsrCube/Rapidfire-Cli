@@ -11,7 +11,7 @@ const {
   getDotnetInstallInstructions,
   getPythonInstallInstructions
 } = require('../utils/proc');
-const { getParentGitRepo } = require('../utils/gitContext');
+const { getParentGitRepo, setupGitAndGithub } = require('../utils/gitContext');
 const { getFrontendAdapter, hasFrontendAdapter } = require('./adapters/frontend');
 const { getBackendAdapter, hasBackendAdapter } = require('./adapters/backend');
 
@@ -1772,37 +1772,7 @@ run ${targetFolder}
     await maybePromptForVenv(backendDir, context);
   }
 
-  try {
-    const parentRepo = getParentGitRepo(projectPath);
-    if (parentRepo) {
-      console.log(`\x1b[33m[rapidfire] Detected parent Git repository at '${parentRepo}'. Skipping nested git init.\x1b[0m`);
-      try { installPrePushHook(parentRepo); } catch {}
-    } else {
-      const gitPrompt = `\nDo you want to initialize a local Git repository for '${targetFolder}'? (Y/N): `;
-      const isInteractive = Boolean(context && (typeof context.ask === 'function' || context.rl));
-      const defaultChoice = isInteractive ? 'n' : (process.env.RAPIDFIRE_AUTO_GIT === '0' ? 'n' : 'y');
-      const shouldInit = await promptConfirmation(context, gitPrompt, defaultChoice);
-
-      if (shouldInit) {
-        if (!fse.existsSync(path.join(projectPath, '.git'))) {
-          try {
-            run('git init -b main', { cwd: projectPath, stdio: 'ignore' });
-          } catch {
-            run('git init', { cwd: projectPath, stdio: 'ignore' });
-          }
-          console.log('[rapidfire] Initialized local git repository.');
-        }
-        const hookResult = installPrePushHook(projectPath);
-        if (hookResult.success) {
-          console.log('\x1b[32m[rapidfire-security] Installed gitleaks pre-push hook in .git/hooks/pre-push\x1b[0m');
-        }
-      } else {
-        console.log('[rapidfire] Skipped local git initialization.');
-      }
-    }
-  } catch (err) {
-    console.warn('[rapidfire] Git initialization notice:', err.message);
-  }
+  await setupGitAndGithub(projectPath, targetFolder, context);
 
   console.log(`\n\x1b[32m╔════════════════════════════════════════════════════╗\x1b[0m`);
   console.log(`\x1b[32m║  Project '${targetFolder}' (${frontend}+${backend}) ready!  ║\x1b[0m`);
@@ -1886,37 +1856,7 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
   };
   fse.writeJsonSync(path.join(projectPath, '.rapidfire.json'), manifestData, { spaces: 2 });
 
-  try {
-    const parentRepo = getParentGitRepo(projectPath);
-    if (parentRepo) {
-      console.log(`\x1b[33m[rapidfire] Detected parent Git repository at '${parentRepo}'. Skipping nested git init.\x1b[0m`);
-      try { installPrePushHook(parentRepo); } catch {}
-    } else {
-      const gitPrompt = `\nDo you want to initialize a local Git repository for '${targetFolder}'? (Y/N): `;
-      const isInteractive = Boolean(context && (typeof context.ask === 'function' || context.rl));
-      const defaultChoice = isInteractive ? 'n' : (process.env.RAPIDFIRE_AUTO_GIT === '0' ? 'n' : 'y');
-      const shouldInit = await promptConfirmation(context, gitPrompt, defaultChoice);
-
-      if (shouldInit) {
-        if (!fse.existsSync(path.join(projectPath, '.git'))) {
-          try {
-            run('git init -b main', { cwd: projectPath, stdio: 'ignore' });
-          } catch {
-            run('git init', { cwd: projectPath, stdio: 'ignore' });
-          }
-          console.log('[rapidfire] Initialized local git repository.');
-        }
-        const hookResult = installPrePushHook(projectPath);
-        if (hookResult.success) {
-          console.log('\x1b[32m[rapidfire-security] Installed gitleaks pre-push hook in .git/hooks/pre-push\x1b[0m');
-        }
-      } else {
-        console.log('[rapidfire] Skipped local git initialization.');
-      }
-    }
-  } catch (err) {
-    console.warn('[rapidfire] Git initialization notice:', err.message);
-  }
+  await setupGitAndGithub(projectPath, targetFolder, context);
 
   if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1' && blueprint.ecosystem === 'node' && fse.existsSync(path.join(projectPath, 'package.json')) && commandExists('npm')) {
     const installPrompt = `\nDo you want to run 'npm install' now? (Y/N): `;
@@ -1959,21 +1899,6 @@ async function scaffoldDynamicFramework(projectPath, targetFolder, plan, context
     }
   }
 
-  if (fse.existsSync(path.join(projectPath, '.git')) && isGhInstalled() && context && (context.ask || context.rl || process.env.RAPIDFIRE_AUTO_GH)) {
-    const ghPrompt = `\nDo you want to create a remote GitHub repository for '${targetFolder}'? (Y/N): `;
-    const shouldGh = await promptConfirmation(context, ghPrompt, 'n');
-    if (shouldGh) {
-      if (!isGhAuthenticated()) {
-        console.log(`\x1b[33m[rapidfire] GitHub CLI is not authenticated. Run "gh auth login" in your terminal first.\x1b[0m`);
-      } else {
-        console.log(`[rapidfire] Creating remote GitHub repository '${targetFolder}'...`);
-        const res = createRepo(projectPath, targetFolder, false);
-        if (res.success) {
-          console.log(`\x1b[32m[OK] Remote GitHub repository '${targetFolder}' created and linked to origin!\x1b[0m`);
-        }
-      }
-    }
-  }
 
   console.log(`\n\x1b[32m╔════════════════════════════════════════════════════╗\x1b[0m`);
   console.log(`\x1b[32m║  Project '${targetFolder}' (${stack}) ready!  ║\x1b[0m`);

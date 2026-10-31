@@ -2,6 +2,8 @@ const { execSync } = require('child_process');
 const path = require('path');
 
 process.env.RAPIDFIRE_SKIP_INSTALL = '1';
+process.env.RAPIDFIRE_SKIP_GH = '1';
+process.env.RAPIDFIRE_AUTO_VENV = '0';
 
 const testScripts = [
   'test/test_helpers.js',
@@ -36,7 +38,8 @@ const testScripts = [
   'test/test_explain_subfolder_export.js',
   'test/test_overview.js',
   'test/test_init_wizard.js',
-  'test/test_universal_frameworks.js'
+  'test/test_universal_frameworks.js',
+  'test/test_setup_redesign.js'
 ];
 
 console.log('\n======================================================');

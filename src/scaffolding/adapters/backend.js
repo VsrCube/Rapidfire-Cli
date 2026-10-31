@@ -101,6 +101,7 @@ app.listen(PORT, () => console.log(\`Server running on http://localhost:\${PORT}
 `;
   fse.writeFileSync(path.join(backendDir, 'server.js'), serverJs, 'utf8');
   fse.writeFileSync(path.join(backendDir, '.env.example'), `PORT=${port}\n`, 'utf8');
+  fse.writeFileSync(path.join(backendDir, '.env'), `PORT=${port}\n`, 'utf8');
   runBackendNpmInstall(backendDir, 'Express');
 }
 
@@ -108,11 +109,11 @@ function runBackendNpmInstall(backendDir, name) {
   if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1') {
     console.log(`[rapidfire] Installing ${name} backend dependencies from LTS...`);
     try {
-      run('npm install', { cwd: backendDir, stdio: 'pipe' });
+      run('npm install --prefer-offline --no-audit --no-fund', { cwd: backendDir, stdio: 'pipe' });
       console.log(`[rapidfire] ${name} backend ready.`);
     } catch (err) {
       try {
-        run('npm install --legacy-peer-deps', { cwd: backendDir, stdio: 'pipe' });
+        run('npm install --legacy-peer-deps --prefer-offline --no-audit --no-fund', { cwd: backendDir, stdio: 'pipe' });
         console.log(`[rapidfire] ${name} backend ready.`);
       } catch (innerErr) {
         console.warn('\x1b[33m[rapidfire] npm install notice:\x1b[0m', innerErr.message);
@@ -257,6 +258,8 @@ serve({ fetch: app.fetch, port: ${port} }, (info) => {
   fse.writeFileSync(path.join(backendDir, 'server.js'), serverJs, 'utf8');
   fse.writeFileSync(path.join(backendDir, 'index.js'), serverJs, 'utf8');
   fse.writeFileSync(path.join(backendDir, '.gitignore'), `node_modules/\n.env\n`, 'utf8');
+  fse.writeFileSync(path.join(backendDir, '.env.example'), `PORT=${port}\n`, 'utf8');
+  fse.writeFileSync(path.join(backendDir, '.env'), `PORT=${port}\n`, 'utf8');
   fse.writeFileSync(path.join(backendDir, 'README.md'), `# ${appName} Backend (Hono)\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`, 'utf8');
   runBackendNpmInstall(backendDir, 'Hono');
 }
@@ -291,6 +294,8 @@ fastify.listen({ port: ${port}, host: '0.0.0.0' }, (err, addr) => {
 `;
   fse.writeFileSync(path.join(backendDir, 'server.js'), serverJs, 'utf8');
   fse.writeFileSync(path.join(backendDir, '.gitignore'), `node_modules/\n.env\n`, 'utf8');
+  fse.writeFileSync(path.join(backendDir, '.env.example'), `PORT=${port}\n`, 'utf8');
+  fse.writeFileSync(path.join(backendDir, '.env'), `PORT=${port}\n`, 'utf8');
   fse.writeFileSync(path.join(backendDir, 'README.md'), `# ${appName} Backend (Fastify)\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`, 'utf8');
   runBackendNpmInstall(backendDir, 'Fastify');
 }
@@ -334,6 +339,8 @@ app.listen(PORT, () => console.log(\`[rapidfire] NestJS backend listening on htt
   fse.ensureDirSync(srcDir);
   fse.writeFileSync(path.join(srcDir, 'app.controller.ts'), `import { Controller, Get } from '@nestjs/common';\n@Controller()\nexport class AppController {\n  @Get('api/health')\n  getHealth() { return { status: 'ok', message: 'NestJS backend is running', port: ${port} }; }\n}\n`, 'utf8');
   fse.writeFileSync(path.join(backendDir, '.gitignore'), `node_modules/\ndist/\n.env\n`, 'utf8');
+  fse.writeFileSync(path.join(backendDir, '.env.example'), `PORT=${port}\n`, 'utf8');
+  fse.writeFileSync(path.join(backendDir, '.env'), `PORT=${port}\n`, 'utf8');
   fse.writeFileSync(path.join(backendDir, 'README.md'), `# ${appName} Backend (NestJS)\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`, 'utf8');
   runBackendNpmInstall(backendDir, 'NestJS');
 }
@@ -377,6 +384,8 @@ app.listen(PORT, () => {
 `;
   fse.writeFileSync(path.join(backendDir, 'server.js'), serverJs, 'utf8');
   fse.writeFileSync(path.join(backendDir, '.gitignore'), `node_modules/\n.env\n`, 'utf8');
+  fse.writeFileSync(path.join(backendDir, '.env.example'), `PORT=${port}\n`, 'utf8');
+  fse.writeFileSync(path.join(backendDir, '.env'), `PORT=${port}\n`, 'utf8');
   fse.writeFileSync(path.join(backendDir, 'README.md'), `# ${appName} Backend (Koa)\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n`, 'utf8');
   runBackendNpmInstall(backendDir, 'Koa');
 }

@@ -6,6 +6,9 @@ const { handleSetup } = require('../src/commands/setup');
 const { readManifest } = require('../src/utils/manifest');
 
 async function runTests() {
+  process.env.RAPIDFIRE_SKIP_INSTALL = '1';
+  process.env.RAPIDFIRE_SKIP_GH = '1';
+  process.env.RAPIDFIRE_AUTO_VENV = '0';
   console.log('=== TEST SUITE: DYNAMIC & UNKNOWN FRAMEWORK SCAFFOLDING ===\n');
 
   console.log('[Test 1] Testing StackPlanner classification across all 3 tiers...');

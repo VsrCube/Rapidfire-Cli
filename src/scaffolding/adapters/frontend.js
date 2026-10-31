@@ -19,11 +19,11 @@ function runNpmInstall(dir, name) {
   if (process.env.RAPIDFIRE_SKIP_INSTALL !== '1') {
     console.log(`[rapidfire] Installing ${name} frontend dependencies from LTS...`);
     try {
-      run('npm install', { cwd: dir, stdio: 'pipe' });
+      run('npm install --prefer-offline --no-audit --no-fund', { cwd: dir, stdio: 'pipe' });
       console.log(`[rapidfire] ${name} frontend ready.`);
     } catch (err) {
       try {
-        run('npm install --legacy-peer-deps', { cwd: dir, stdio: 'pipe' });
+        run('npm install --legacy-peer-deps --prefer-offline --no-audit --no-fund', { cwd: dir, stdio: 'pipe' });
         console.log(`[rapidfire] ${name} frontend ready.`);
       } catch (innerErr) {
         console.warn('\x1b[33m[rapidfire] npm install notice:\x1b[0m', innerErr.message);
@@ -68,6 +68,7 @@ export default defineConfig({ plugins: [react()], server: { port: ${port} } });
 <body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>
 `, 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
   fse.writeFileSync(path.join(srcDir, 'index.css'), `body { margin: 0; background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; display: flex; min-height: 100vh; align-items: center; justify-content: center; }`, 'utf8');
@@ -179,6 +180,7 @@ export default defineConfig({ plugins: [vue()], server: { port: ${port} } });
 <body><div id="app"></div><script type="module" src="/src/main.js"></script></body></html>
 `, 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
   const appVueContent = isStandalone ? `<script setup>
@@ -275,6 +277,7 @@ export default defineConfig({ plugins: [svelte()], server: { port: ${port} } });
 <body><div id="app"></div><script type="module" src="/src/main.js"></script></body></html>
 `, 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
   const appSvelteContent = isStandalone ? `<script>
@@ -401,6 +404,7 @@ export default defineConfig({ plugins: [angular()], server: { port: ${port} } })
   fse.writeFileSync(path.join(publicDir, 'favicon.ico'), '', 'utf8');
   fse.writeFileSync(path.join(frontendDir, 'index.html'), `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><title>Rapidfire Angular</title><meta name="viewport" content="width=device-width, initial-scale=1" /><link rel="icon" type="image/x-icon" href="/favicon.ico" /></head><body style="margin:0; background:#0f172a; color:#f8fafc; font-family:system-ui, sans-serif;"><app-root></app-root><script type="module" src="/src/main.ts"></script></body></html>\n`, 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   const appDir = path.join(srcDir, 'app');
   fse.ensureDirSync(appDir);
@@ -512,6 +516,7 @@ export default defineConfig({ plugins: [solidPlugin()], server: { port: ${port} 
   fse.writeFileSync(path.join(publicDir, 'favicon.ico'), '', 'utf8');
   fse.writeFileSync(path.join(frontendDir, 'index.html'), `<!DOCTYPE html><html lang="en"><head><title>Rapidfire Solid</title><link rel="icon" type="image/x-icon" href="/favicon.ico" /></head><body><div id="root"></div><script type="module" src="/src/index.jsx"></script></body></html>\n`, 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
   fse.writeFileSync(path.join(srcDir, 'index.jsx'), `import { render } from 'solid-js/web';\nimport App from './App';\nrender(() => <App />, document.getElementById('root'));\n`, 'utf8');
@@ -611,6 +616,7 @@ export default defineConfig({ plugins: [preact()], server: { port: ${port} } });
   fse.writeFileSync(path.join(publicDir, 'favicon.ico'), '', 'utf8');
   fse.writeFileSync(path.join(frontendDir, 'index.html'), `<!DOCTYPE html><html lang="en"><head><title>Rapidfire Preact</title><link rel="icon" type="image/x-icon" href="/favicon.ico" /></head><body><div id="app"></div><script type="module" src="/src/main.jsx"></script></body></html>\n`, 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
   fse.writeFileSync(path.join(srcDir, 'main.jsx'), `import { render } from 'preact';\nimport { App } from './App';\nrender(<App />, document.getElementById('app'));\n`, 'utf8');
@@ -709,6 +715,7 @@ export default defineConfig({ plugins: [qwikVite()], server: { port: ${port} } }
   fse.writeFileSync(path.join(publicDir, 'favicon.ico'), '', 'utf8');
   fse.writeFileSync(path.join(frontendDir, 'index.html'), `<!DOCTYPE html><html lang="en"><head><title>Rapidfire Qwik</title><link rel="icon" type="image/x-icon" href="/favicon.ico" /></head><body><div id="qwik-root"></div><script type="module" src="/src/main.jsx"></script></body></html>\n`, 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
   fse.writeFileSync(path.join(srcDir, 'main.jsx'), `import { render } from '@builder.io/qwik';\nimport App from './app';\nrender(document.getElementById('qwik-root'), <App />);\n`, 'utf8');
@@ -758,6 +765,7 @@ export default defineConfig({ server: { port: ${port} } });
   fse.writeFileSync(path.join(publicDir, 'favicon.ico'), '', 'utf8');
   fse.writeFileSync(path.join(frontendDir, 'index.html'), `<!DOCTYPE html><html lang="en"><head><title>Rapidfire Lit</title><link rel="icon" type="image/x-icon" href="/favicon.ico" /></head><body style="margin:0; background:#0f172a;"><rapidfire-app></rapidfire-app><script type="module" src="/src/app.js"></script></body></html>\n`, 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
   const appJs = isStandalone ? `import { LitElement, html, css } from 'lit';
@@ -871,6 +879,7 @@ function scaffoldAstroFallback(frontendDir, options = {}) {
   fse.ensureDirSync(publicDir);
   fse.writeFileSync(path.join(publicDir, 'favicon.ico'), '', 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `PUBLIC_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `PUBLIC_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const pagesDir = path.join(frontendDir, 'src', 'pages');
   fse.ensureDirSync(pagesDir);
   const indexAstro = isStandalone ? `---
@@ -977,6 +986,7 @@ function scaffoldNextFallback(frontendDir, options = {}) {
   fse.ensureDirSync(publicDir);
   fse.writeFileSync(path.join(publicDir, 'favicon.ico'), '', 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `NEXT_PUBLIC_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `NEXT_PUBLIC_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const appDir = path.join(frontendDir, 'app');
   fse.ensureDirSync(appDir);
   fse.writeFileSync(path.join(appDir, 'layout.jsx'), `export const metadata = { title: 'RapidFire Next' };
@@ -1080,6 +1090,7 @@ function scaffoldNuxtFallback(frontendDir, options = {}) {
   fse.ensureDirSync(publicDir);
   fse.writeFileSync(path.join(publicDir, 'favicon.ico'), '', 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const appVue = isStandalone ? `<script setup>
 import { ref } from 'vue';
 const count = ref(0);
@@ -1168,6 +1179,7 @@ export default defineConfig({ plugins: [sveltekit()], server: { port: ${port} } 
   fse.ensureDirSync(publicDir);
   fse.writeFileSync(path.join(publicDir, 'favicon.ico'), '', 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const srcDir = path.join(frontendDir, 'src');
   fse.ensureDirSync(srcDir);
   fse.writeFileSync(path.join(srcDir, 'app.html'), `<!doctype html>
@@ -1267,6 +1279,7 @@ export default defineConfig({ server: { port: ${port} } });
   fse.ensureDirSync(publicDir);
   fse.writeFileSync(path.join(publicDir, 'favicon.ico'), '', 'utf8');
   fse.writeFileSync(path.join(frontendDir, '.env.example'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
+  fse.writeFileSync(path.join(frontendDir, '.env'), `VITE_API_URL=http://localhost:${apiPort}\n`, 'utf8');
   const indexHtml = isStandalone ? `<!doctype html>
 <html lang="en">
   <head><meta charset="UTF-8" /><link rel="icon" type="image/x-icon" href="/favicon.ico" /><title>Rapidfire Vanilla</title></head>

@@ -35,14 +35,19 @@ function planStack(stackInput) {
   if (normalized.includes('+')) {
     const parts = normalized.split('+');
     if (parts.length === 2) {
-      const [fe, be] = parts;
+      let [fe, be] = parts;
+      if (COMPOSED_BACKENDS.includes(fe) && COMPOSED_FRONTENDS.includes(be)) {
+        const tmp = fe;
+        fe = be;
+        be = tmp;
+      }
       const feKnown = COMPOSED_FRONTENDS.includes(fe);
       const beKnown = COMPOSED_BACKENDS.includes(be);
 
       if (feKnown && beKnown) {
         return {
           tier: 'COMPOSED',
-          stack: normalized,
+          stack: `${fe}+${be}`,
           frontend: fe,
           backend: be
         };

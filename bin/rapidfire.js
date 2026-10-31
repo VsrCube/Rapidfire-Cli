@@ -2,10 +2,11 @@
 
 const { startRepl } = require('../src/repl');
 
-process.on('SIGINT', () => {
-});
-
 process.on('SIGTERM', () => {
+  try {
+    const { stopProcesses } = require('../src/commands/run');
+    stopProcesses();
+  } catch {}
   process.exit(0);
 });
 
@@ -16,9 +17,25 @@ if (args.includes('-v') || args.includes('--version') || (args.length === 1 && a
   process.exit(0);
 }
 
+if (args[0] === 'stop' || args[0] === 'kill') {
+  const { stopProcesses } = require('../src/commands/run');
+  stopProcesses(args.slice(1));
+  process.exit(0);
+}
+
 if (args[0] === 'run' || args[0] === 'start' || args[0] === 'serve') {
-  const { handleRun } = require('../src/commands/run');
-  handleRun(args.slice(1));
+  const { handleCliRun } = require('../src/commands/run');
+  handleCliRun(args.slice(1));
+  return;
+}
+
+if (args[0] === 'setup') {
+  const readline = require('readline');
+  const { handleSetup } = require('../src/commands/setup');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  handleSetup(args.slice(1), { rl })
+    .then(() => { rl.close(); process.exit(0); })
+    .catch((err) => { rl.close(); console.error(err); process.exit(1); });
   return;
 }
 
