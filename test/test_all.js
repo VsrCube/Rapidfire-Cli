@@ -39,7 +39,8 @@ const testScripts = [
   'test/test_overview.js',
   'test/test_init_wizard.js',
   'test/test_universal_frameworks.js',
-  'test/test_setup_redesign.js'
+  'test/test_setup_redesign.js',
+  'test/test_secret_shield.js'
 ];
 
 console.log('\n======================================================');

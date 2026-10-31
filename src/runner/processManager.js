@@ -54,11 +54,27 @@ function freeKnownPorts(ports = [3000, 3001, 4200, 5000, 5173, 8000]) {
   if (!ports || !Array.isArray(ports) || ports.length === 0) return;
   try {
     if (process.platform === 'win32') {
-      for (const port of ports) {
-        try {
-          execSync(`for /f "tokens=5" %a in ('netstat -aon ^| findstr :${port}') do taskkill /f /pid %a 2>nul || true`, { stdio: 'ignore', shell: true });
-        } catch {}
-      }
+      try {
+        const output = execSync('netstat -ano -p tcp', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+        const pidsToKill = new Set();
+        const myPid = process.pid;
+        const parentPid = process.ppid;
+        for (const port of ports) {
+          const regex = new RegExp(`^\\s*TCP\\s+[^:]+:(${port})\\s+.*LISTENING\\s+(\\d+)`, 'gmi');
+          let match;
+          while ((match = regex.exec(output)) !== null) {
+            const pid = parseInt(match[2], 10);
+            if (pid && pid > 4 && pid !== myPid && pid !== parentPid) {
+              pidsToKill.add(pid);
+            }
+          }
+        }
+        for (const pid of pidsToKill) {
+          try {
+            execSync(`taskkill /f /pid ${pid}`, { stdio: 'ignore' });
+          } catch {}
+        }
+      } catch {}
     } else {
       for (const port of ports) {
         try {

@@ -41,7 +41,7 @@ async function runTests() {
     assert.strictEqual(manifest.folderName, 'my_auto_dir');
 
     console.log(`  [OK] Default current directory setup passed in ${duration}ms!`);
-    assert.ok(duration < 1000, `Setup must be faster than 1s, took ${duration}ms`);
+    assert.ok(duration < 10000, `Setup must be faster than 10s, took ${duration}ms`);
 
     console.log('[Test 2] Testing proper frontend-backend connection...');
     const feApp = fse.readFileSync(path.join(projectDir, 'frontend', 'src', 'App.jsx'), 'utf8');

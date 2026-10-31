@@ -19,10 +19,21 @@ function matchCommand(line) {
   const cmd = tokens[0].toLowerCase();
 
   const hasPushToken = tokens.some((t) => t.toLowerCase() === 'push');
+  const hasCommitToken = tokens.some((t) => {
+    const l = t.toLowerCase();
+    return (
+      l.startsWith('-m') ||
+      l.startsWith('-commit') ||
+      l.startsWith('--commit') ||
+      l.startsWith('-message') ||
+      l.startsWith('--message')
+    );
+  });
+
   if (
     cmd === 'push' ||
-    (cmd === 'git' && tokens[1]?.toLowerCase() === 'add' && hasPushToken) ||
-    (cmd === 'add' && hasPushToken) ||
+    (cmd === 'git' && tokens[1]?.toLowerCase() === 'add' && (hasPushToken || hasCommitToken)) ||
+    (cmd === 'add' && (hasPushToken || hasCommitToken)) ||
     (cmd === 'git' && tokens[1]?.toLowerCase() === 'push' && tokens.some((t) => t.startsWith('-m') || t.startsWith('-commit') || t.startsWith('-b') || t.startsWith('-branch')))
   ) {
     return {
@@ -223,6 +234,23 @@ function matchCommand(line) {
     return {
       name: 'overview',
       run: async () => handleOverview(tokens.slice(1))
+    };
+  }
+
+  if (cmd === 'scan') {
+    return {
+      name: 'scan',
+      run: async () => {
+        const { scanDirectory, renderSecurityBanner } = require('../security/secretScanner');
+        const targetDir = tokens[1] || process.cwd();
+        console.log(`\n\x1b[36m[rapidfire-security] Scanning directory '${targetDir}' for leaked secrets...\x1b[0m`);
+        const res = scanDirectory(targetDir);
+        if (!res.clean) {
+          renderSecurityBanner(res.findings, 'audit');
+        } else {
+          console.log(`\x1b[32m[OK] [rapidfire-security] Scanned ${res.scannedFiles} file(s). No leaked secrets or credentials detected!\x1b[0m\n`);
+        }
+      }
     };
   }
 

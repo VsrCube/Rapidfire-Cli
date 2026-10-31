@@ -2,6 +2,7 @@ const path = require('path');
 const { run, runCapture } = require('../utils/proc');
 const { isGhInstalled, isGhAuthenticated, createRepo } = require('../integrations/gh');
 const { installPrePushHook } = require('../integrations/gitleaks');
+const { scanStagedChanges, scanUnpushedCommits, renderSecurityBanner, installSecurityHooks } = require('../security/secretScanner');
 const { promptConfirmation } = require('../utils/gitContext');
 
 function parseTokensWithQuotes(input) {
@@ -22,11 +23,23 @@ function parsePushArgs(input) {
   let message = null;
 
   let pushIdx = tokens.findIndex((t) => t.toLowerCase() === 'push');
-  if (pushIdx === -1) {
-    pushIdx = 0;
+  let prePush = [];
+  let postPush = [];
+
+  if (pushIdx !== -1) {
+    prePush = tokens.slice(0, pushIdx);
+    postPush = tokens.slice(pushIdx + 1);
+  } else {
+    const firstFlagIdx = tokens.findIndex((t) => t.startsWith('-'));
+    if (firstFlagIdx !== -1) {
+      prePush = tokens.slice(0, firstFlagIdx);
+      postPush = tokens.slice(firstFlagIdx);
+    } else {
+      prePush = tokens;
+      postPush = [];
+    }
   }
 
-  const prePush = tokens.slice(0, pushIdx);
   if (prePush.length > 0) {
     let fileCandidates = [];
     if (prePush[0].toLowerCase() === 'git' && prePush[1]?.toLowerCase() === 'add') {
@@ -38,8 +51,6 @@ function parsePushArgs(input) {
       files.push(...fileCandidates);
     }
   }
-
-  const postPush = tokens.slice(pushIdx + 1);
 
   const hasExplicitCommitFlag = postPush.some((t) => {
     const l = t.toLowerCase();
@@ -207,10 +218,10 @@ async function handlePush(rawArgs, context = {}) {
     } catch {
       run('git init', { cwd, stdio: 'ignore' });
     }
-    installPrePushHook(cwd);
+    installSecurityHooks(cwd);
   } else {
     try {
-      installPrePushHook(cwd);
+      installSecurityHooks(cwd);
     } catch { }
   }
 
@@ -266,6 +277,19 @@ async function handlePush(rawArgs, context = {}) {
   } catch (addErr) {
     console.error(`${red}[rapidfire-git] Staging failed:${reset} ${addErr.message}`);
     return { success: false, error: addErr.message };
+  }
+
+  // RapidFire Secret Shield: Scan Staged Changes BEFORE Committing
+  console.log(`${cyan}[rapidfire-security] Scanning staged changes with Secret Shield...${reset}`);
+  const stagedCheck = scanStagedChanges(cwd);
+  if (!stagedCheck.clean) {
+    renderSecurityBanner(stagedCheck.findings, 'commit');
+    return {
+      success: false,
+      blocked: true,
+      error: 'LEAKED_SECRETS_DETECTED',
+      findings: stagedCheck.findings
+    };
   }
 
   let commitMessage = parsed.message;
@@ -354,6 +378,19 @@ async function handlePush(rawArgs, context = {}) {
       const count = runCapture(`git rev-list --count "origin/${targetBranch}..HEAD"`, { cwd }).trim();
       unpushedCommitsCount = parseInt(count, 10) || 0;
     } catch { }
+  }
+
+  // RapidFire Secret Shield: Scan Outgoing Commits BEFORE Pushing
+  console.log(`${cyan}[rapidfire-security] Scanning outgoing commits with Secret Shield...${reset}`);
+  const unpushedCheck = scanUnpushedCommits(cwd, targetBranch);
+  if (!unpushedCheck.clean) {
+    renderSecurityBanner(unpushedCheck.findings, 'push');
+    return {
+      success: false,
+      blocked: true,
+      error: 'LEAKED_SECRETS_DETECTED',
+      findings: unpushedCheck.findings
+    };
   }
 
   try {

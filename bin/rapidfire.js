@@ -57,6 +57,20 @@ if (args[0] === 'ask') {
   return;
 }
 
+if (args[0] === 'scan') {
+  const { scanDirectory, renderSecurityBanner } = require('../src/security/secretScanner');
+  const targetDir = args[1] || process.cwd();
+  console.log(`\n\x1b[36m[rapidfire-security] Scanning directory '${targetDir}' for leaked secrets...\x1b[0m`);
+  const res = scanDirectory(targetDir);
+  if (!res.clean) {
+    renderSecurityBanner(res.findings, 'scan');
+    process.exit(1);
+  } else {
+    console.log(`\x1b[32m[OK] [rapidfire-security] Scanned ${res.scannedFiles} file(s). No leaked secrets or credentials detected!\x1b[0m\n`);
+    process.exit(0);
+  }
+}
+
 if (args.includes('-h') || args.includes('--help') || (args.length === 1 && args[0] === 'help')) {
   const { showHelp } = require('../src/commands/help');
   showHelp();

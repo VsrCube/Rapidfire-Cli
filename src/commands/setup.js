@@ -21,6 +21,14 @@ async function initGitAndHooks(projectPath, targetFolder, context = {}) {
   return await setupGitAndGithub(projectPath, targetFolder, context);
 }
 
+function terminateExistingServers() {
+  try {
+    const { freeKnownPorts, stopProcesses } = require('../runner/processManager');
+    stopProcesses();
+    freeKnownPorts([3000, 3001, 4200, 5000, 5173, 8000]);
+  } catch {}
+}
+
 async function ensureTargetDirectoryReady(projectPath, targetFolder, isCurrentDir, isFullstack, args = [], context = {}) {
   const forceFlag = args.includes('--force') || args.includes('-f') || process.env.RAPIDFIRE_FORCE_OVERWRITE === '1';
 
@@ -28,6 +36,7 @@ async function ensureTargetDirectoryReady(projectPath, targetFolder, isCurrentDi
     if (fse.existsSync(projectPath) && !isDirEmpty(projectPath)) {
       if (forceFlag) {
         console.log(`[rapidfire] Target directory '${targetFolder}' is not empty. Overwriting (--force)...`);
+        terminateExistingServers();
         fse.emptyDirSync(projectPath);
         return true;
       }
@@ -53,6 +62,7 @@ async function ensureTargetDirectoryReady(projectPath, targetFolder, isCurrentDi
 
       if (answer && answer.trim().toLowerCase().startsWith('y')) {
         console.log(`[rapidfire] Overwriting '${targetFolder}'...`);
+        terminateExistingServers();
         fse.emptyDirSync(projectPath);
         return true;
       }
@@ -70,6 +80,7 @@ async function ensureTargetDirectoryReady(projectPath, targetFolder, isCurrentDi
     if (hasSubdirs) {
       if (forceFlag) {
         console.log(`[rapidfire] 'frontend' or 'backend' directory already exists. Overwriting (--force)...`);
+        terminateExistingServers();
         if (fse.existsSync(feDir)) fse.emptyDirSync(feDir);
         if (fse.existsSync(beDir)) fse.emptyDirSync(beDir);
         return true;
@@ -96,6 +107,7 @@ async function ensureTargetDirectoryReady(projectPath, targetFolder, isCurrentDi
 
       if (answer && answer.trim().toLowerCase().startsWith('y')) {
         console.log(`[rapidfire] Overwriting 'frontend' and 'backend'...`);
+        terminateExistingServers();
         if (fse.existsSync(feDir)) fse.emptyDirSync(feDir);
         if (fse.existsSync(beDir)) fse.emptyDirSync(beDir);
         return true;

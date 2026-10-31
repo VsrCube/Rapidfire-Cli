@@ -394,17 +394,21 @@ ${bold}PROJECT PRESETS & REPRODUCIBILITY:${reset}
   ${yellow}load preset <name> <folder>${reset}    Restore project structure and files from saved JSON preset
   ${yellow}presets${reset} / ${yellow}list presets${reset}          List all saved project presets with timestamps & file counts
 
+${bold}SECURITY & SECRET SCANNING:${reset}
+  ${red}scan [folder]${reset}                   Audit repository or folder for exposed API keys, tokens, & secrets
+                                (Native zero-dependency Secret Shield with automated redaction)
+
 ${bold}GIT & GITHUB AUTOMATION:${reset}
   ${green}git add <files> push [-b <branch>|-m] -commit "msg"${reset}
   ${green}add <files> push [-b <branch>|-m] -commit "msg"${reset}
   ${green}push [-b <branch>|-m] -commit "msg"${reset}
-                                Stage files (or .), GitLeaks scan, commit, and push in one command
+                                Stage files (or .), Secret Shield scan, commit, and push in one command
                                 • Push to main: "git add . push -m -commit 'Add server module'"
                                 • Current branch: "push -m 'Update user dashboard'"
                                 • Specific branch: "push -b feature1 -commit 'new feature'"
                                 • Shorthand: "git add . push -main -commit 'msg'"
                                 • Single file: "git add README.md push -m 'updated docs'"
-                                • Automated GitLeaks scan prevents accidental credential leaks
+                                • Native Secret Shield: Pre-commit & pre-push scanning blocks leaks BEFORE commit
                                 • Automatically recovers and syncs via rebase if remote is ahead
                                 • Automatically links remote repository via GitHub CLI (gh) if needed
 

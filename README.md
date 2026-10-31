@@ -357,7 +357,7 @@ RapidFire is built with defensive engineering principles across **5 security pil
 +-----------------------------------------------------------------------------+
 |                       5 PILLARS OF RAPIDFIRE SECURITY                       |
 +-----------------------------------------------------------------------------+
-| 1. GitLeaks Secret Protection        -> Automated pre-push git hook         |
+| 1. RapidFire Secret Shield           -> Native pre-commit & pre-push scanning |
 | 2. Package Registry Verification     -> Injection shield & PyPI/npm checks  |
 | 3. Path Traversal & File Safety      -> Sanitized paths & preview approvals |
 | 4. Guarded Cloud Deployment          -> Clean git check & manual Y/N prompt |
@@ -365,10 +365,12 @@ RapidFire is built with defensive engineering principles across **5 security pil
 +-----------------------------------------------------------------------------+
 ```
 
-### 1. GitLeaks Pre-Push Secret Scanning
-* Every project scaffolded with `setup` or initialized with `init` automatically initializes Git and installs a **`.git/hooks/pre-push`** security hook.
-* Before any code is pushed to a remote repository (`git push`), RapidFire scans outgoing commit diffs for exposed credentials (API keys, private keys, AWS tokens, GitHub PATs).
-* If sensitive credentials are detected, the push is immediately halted, preventing security leaks before they reach the web.
+### 1. RapidFire Secret Shield (Dual-Layer Secret Scanning)
+* **Zero External Dependencies:** Built natively into RapidFire CLI without requiring external binaries.
+* **Pre-Commit Enforcement:** RapidFire inspects staged code **before** creating commits. Exposed API keys (OpenAI `sk-proj-`, Google `AIza`, AWS `AKIA`, GitHub `ghp_`, private keys, database URIs) are intercepted and rejected before ever entering Git history.
+* **Pre-Push Outgoing Commit Scan:** Scans the full commit range being pushed to remote. If any previous commit in the unpushed history contains a credential, the push is immediately halted with a detailed security report and secret redaction.
+* **Autonomous Git Hooks:** Automatically installs `.git/hooks/pre-commit` and `.git/hooks/pre-push` hooks across all projects to ensure commits and pushes made outside the REPL are equally guarded.
+* **Standalone Audit Command:** Run `scan [directory]` anytime to audit an existing repository for exposed secrets.
 
 ### 2. Dependency Injection & Typo-Squatting Defense
 * When installing packages via the interactive installer, RapidFire validates package identifiers against a strict regex whitelist (`/^[a-zA-Z0-9_\-\.]+$/`).

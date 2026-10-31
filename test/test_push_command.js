@@ -4,6 +4,7 @@ const os = require('os');
 const fs = require('fs');
 const fse = require('fs-extra');
 const { parsePushArgs, handlePush } = require('../src/commands/push');
+const { matchCommand } = require('../src/commands/index');
 const { run, runCapture } = require('../src/utils/proc');
 
 console.log('--- TEST: CUSTOM GIT PUSH & AUTO WORKFLOW ---');
@@ -65,6 +66,19 @@ async function runTests() {
   const p11 = parsePushArgs('git add . push -m');
   assert.strictEqual(p11.branch, 'main', 'Standalone -m should target main branch');
 
+  const pNoPush = parsePushArgs('git add . -m -commit "new"');
+  assert.deepStrictEqual(pNoPush.files, ['.'], 'Should parse files as [.] without push keyword');
+  assert.strictEqual(pNoPush.branch, 'main', 'Should parse -m as branch main when paired with -commit');
+  assert.strictEqual(pNoPush.message, 'new', 'Should parse commit message correctly without push keyword');
+
+  const matchNoPush = matchCommand('git add . -m -commit "new"');
+  assert(matchNoPush, 'matchCommand must match git add with commit flags');
+  assert.strictEqual(matchNoPush.name, 'push', 'Command name should be push');
+
+  const matchAddCommit = matchCommand('add . -commit "only commit flag"');
+  assert(matchAddCommit, 'matchCommand must match add with commit flag');
+  assert.strictEqual(matchAddCommit.name, 'push', 'Command name should be push');
+
   console.log('✓ All syntax parsing combinations verified successfully.');
 
   console.log('[Test 2] Testing staging, committing, and pushing in an active repository...');
@@ -95,7 +109,7 @@ async function runTests() {
     run('git config user.name "Rapidfire Tester"', { cwd: localProject, stdio: 'ignore' });
     run('git config user.email "tester@rapidfire.dev"', { cwd: localProject, stdio: 'ignore' });
 
-    run(`git remote add origin "${bareRemote}"`, { cwd: localProject, stdio: 'ignore' });
+    run(`git remote add origin "${bareRemote.replace(/\\/g, '/')}"`, { cwd: localProject, stdio: 'ignore' });
 
     fs.writeFileSync(path.join(localProject, 'app.js'), 'console.log("Rapidfire Push 1");\n', 'utf8');
 
@@ -160,6 +174,19 @@ async function runTests() {
     const finalBranch = runCapture('git branch --show-current', { cwd: localProject }).trim();
     assert.strictEqual(finalBranch, 'main', 'Active branch must now be switched to main');
 
+    console.log('[Test 9] Testing Secret Shield intercepts exposed API key before committing or pushing...');
+    fs.writeFileSync(path.join(localProject, 'secret_leak.js'), 'const OPENAI = "sk-proj-testexposedkey1234567890abcdef1234567890";\n', 'utf8');
+
+    const resBlocked = await handlePush('git add . push -m -commit "attempting leak"', { cwd: localProject });
+    assert.strictEqual(resBlocked.success, false, 'Push must fail when secrets are present');
+    assert.strictEqual(resBlocked.blocked, true, 'Operation must be blocked by Secret Shield');
+    assert.strictEqual(resBlocked.error, 'LEAKED_SECRETS_DETECTED', 'Error code must be LEAKED_SECRETS_DETECTED');
+    assert(resBlocked.findings.length > 0, 'Must report findings');
+
+    const latestCommitMsg = runCapture('git log -1 --pretty=%B', { cwd: localProject }).trim();
+    assert.notStrictEqual(latestCommitMsg, 'attempting leak', 'Commit must not be added to git history');
+
+    console.log('✓ Secret Shield verified: blocked commit and push cleanly!');
     console.log('✓ Full unified push workflow verified with 100% success!');
   } finally {
     fse.removeSync(tmpRoot);
