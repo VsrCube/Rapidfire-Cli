@@ -21,6 +21,8 @@ documents/
 final/
 report_images/
 generate_report_docx.py
+generate_detailed_report.py
+report_builder/
 rapidfire_development.md
 PROJECT_OVERVIEW_A_TO_Z.md
 all_you_should_know.md
