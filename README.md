@@ -453,11 +453,11 @@ Before touching your filesystem, RapidFire runs runtime diagnostics:
 
 ## AI Provider & API Key Management
 
-RapidFire features a pluggable AI subsystem with automatic key detection. Just paste your API key—RapidFire auto-detects the provider and configures the optimal model:
+RapidFire features a pluggable AI subsystem with automatic key detection and strict runtime model validation. Just paste your API key—RapidFire auto-detects the provider and configures the verified default model:
 
 * **Groq** (`gsk_...`) -> Free-tier `llama-3.3-70b-versatile`
 * **OpenAI** (`sk-...`) -> Fast `gpt-4o-mini`
-* **Gemini** (`AIza...`) -> Fast `gemini-3.5-flash-lite`
+* **Gemini** (`AIza...`) -> Fast `gemini-2.5-flash` (also supports `gemini-2.5-flash-lite`, `gemini-2.5-pro`, `gemini-2.0-flash`, `gemini-1.5-flash`)
 * **Ollama / Custom** -> Local or custom OpenAI-compatible endpoints (`http://localhost:11434/v1`)
 
 ```bash
@@ -467,12 +467,14 @@ key <your_api_key>
 # View active provider, model, masked key, and config source
 key status
 
-# Optional: Override the default model
-key model <model-name>
+# Override the active model (validated in real time against provider API)
+key model <model-name>   # e.g., key model gemini-2.5-flash or key model gpt-4o-mini
 
 # Remove saved credentials
 key clear
 ```
+
+> **Strict Runtime Model Validation Guardrail**: When you run `key model <name>`, RapidFire queries the provider's live model catalog before updating your configuration. If an invalid or non-existent model is specified (e.g. `gemini 8`), the update is halted to prevent runtime crashes and RapidFire displays a curated list of supported models.
 
 ### Repository Architecture, Code Understanding & Application Runner
 
@@ -623,30 +625,32 @@ RapidFire seamlessly synchronizes command history across your host operating sys
 
 | Command | Category | Description |
 |---|---|---|
-| `help` | General | Display the interactive command manual |
+| `help [command]` | General | Concise single-screen cheat-sheet (~38 lines), or detailed topic manual (`help setup`, `help scan`, `help key`, etc.) |
 | `rapidfire` / `rapidfire-cli` | General | Re-display session banner and status within active REPL |
 | `clear` / `cls` | General | Clear terminal screen buffer instantly and return prompt |
 | `version` / `-v` / `--version` | General | Display active RapidFire CLI version |
 | `init` / `setup <recipe> <folder>` | Scaffolding | Scaffold any of the 13 built-in full-stack projects or initialize RapidFire |
 | `setup <fe>+<be> <folder>` | Dynamic Scaffolding | Dynamically compose unlisted pairings (e.g. `setup svelte+fastapi myapp`) |
 | `setup <unknown> <folder>` | AI Scaffolding | Dynamically scaffold unknown frameworks (e.g. `hono`, `astro`, `solid`, `nextjs`) |
+| `scan [folder]` | Security | Audit repository or folder for exposed API keys, tokens & credentials |
+| `run [folder]` | Process Runner | Launch full-stack microservices & dev servers with dynamic runtime port detection (aliases: `start`, `serve`) |
+| `stop [port]` / `kill` | Process Runner | Stop all active background application dev servers and free ports (or free specific port e.g. `kill 3000`) |
 | `overview [--critic]` | AI Architecture | Living repository architecture overview (`md/overview.md`); `--critic` audits strengths, flaws, and pros/cons |
 | `explain [path]` | AI Analysis | Explains codebase architecture, folder tree, or source file role (exports `md/<target>_explain_<date>.md`) |
-| `run [folder]` | Application Runner | Launch full-stack microservices & dev servers with automatic port resolution (aliases: `start`, `serve`) |
 | `ask <question>` | AI Companion | Technical Q&A with conversational memory & 1-click package installer |
 | `ask clear` | AI Companion | Clear conversation context memory |
 | `suggest <description>` | AI Companion | Recommends optimal architecture with interactive `(Y/N)` scaffold prompt |
 | `tell <instruction>` | AI Generation | Generates code and files with plan preview & `(Y/N)` safety approval |
 | `key <api-key>` | Configuration | Save or change your AI API key (auto-detects provider) |
 | `key status` | Configuration | Display active AI provider, model, masked key, and source |
-| `key model <name>` | Configuration | Override active AI model (e.g. `key model gpt-4o-mini`) |
+| `key model <name>` | Configuration | Override active AI model with real-time provider API verification |
 | `key clear` | Configuration | Remove stored AI credentials from local config |
 | `save preset <name> [folder]` | Presets | Serialize project files & manifest into `~/.rapidfire/presets/<name>.json` |
 | `load preset <name> <folder>` | Presets | Recreate project structure & files from a saved preset |
 | `presets` / `list presets` | Presets | List all saved workspace presets |
-| `deploy vercel` | Deployment | Deploy frontend to Vercel production with clean git check & manual confirmation |
-| `git add <files> push [-b <branch>\|-m] -commit "<msg>"` | Git Automation | Stage specific files or `.`, commit, and push in one unified command |
-| `exit` / `quit` | Session | Exit RapidFire cleanly |
+| `deploy [vercel] [folder]` | Deployment | Deploy frontend to Vercel production with clean git check & manual confirmation |
+| `git add <files> push [-b <branch>\|-m] -commit "<msg>"` | Git Automation | Stage specific files or `.`, Secret Shield scan, commit, and push in one unified command |
+| `exit` / `quit` | Session | Exit RapidFire cleanly (silently frees all background processes) |
 | *any shell command* | PTY Shell | Native passthrough (`cd`, `ls`, `git`, `npm`, `python`, `docker`, `curl`) |
 
 ---
