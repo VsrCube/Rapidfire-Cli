@@ -41,3 +41,4 @@ __pycache__/
 # System
 .DS_Store
 Thumbs.db
+build_exact_24_pages.py
