@@ -1,6 +1,55 @@
 const https = require('https');
 const { spawnSync } = require('child_process');
 
+const PYTHON_BUILTINS = new Set([
+  'os', 'sys', 're', 'json', 'math', 'time', 'datetime', 'collections', 'itertools',
+  'urllib', 'pathlib', 'csv', 'random', 'subprocess', 'threading', 'multiprocessing',
+  'typing', 'io', 'shutil', 'tempfile', 'unittest', 'logging', 'functools', 'heapq',
+  'bisect', 'sqlite3', 'copy', 'hashlib', 'socket', 'glob', 'pickle', 'string', 'base64',
+  'struct', 'queue', 'select', 'signal', 'gc', 'inspect', 'traceback', 'warnings'
+]);
+
+const CANONICAL_PYTHON_PKGS = {
+  'numpy': 'numpy',
+  'pandas': 'pandas',
+  'scikit-learn': 'scikit-learn',
+  'sklearn': 'scikit-learn',
+  'nltk': 'nltk',
+  'spacy': 'spacy',
+  'scipy': 'scipy',
+  'matplotlib': 'matplotlib',
+  'seaborn': 'seaborn',
+  'fastapi': 'fastapi',
+  'django': 'django',
+  'flask': 'flask',
+  'requests': 'requests',
+  'httpx': 'httpx',
+  'aiohttp': 'aiohttp',
+  'beautifulsoup4': 'beautifulsoup4',
+  'bs4': 'beautifulsoup4',
+  'polars': 'polars',
+  'duckdb': 'duckdb',
+  'pydantic': 'pydantic',
+  'sqlalchemy': 'sqlalchemy',
+  'pytest': 'pytest',
+  'torch': 'torch',
+  'pytorch': 'torch',
+  'tensorflow': 'tensorflow',
+  'transformers': 'transformers',
+  'pillow': 'pillow',
+  'pil': 'pillow',
+  'openpyxl': 'openpyxl',
+  'statsmodels': 'statsmodels',
+  'xgboost': 'xgboost',
+  'lightgbm': 'lightgbm',
+  'celery': 'celery',
+  'redis': 'redis',
+  'pymongo': 'pymongo',
+  'psycopg2': 'psycopg2',
+  'jinja2': 'jinja2',
+  'alembic': 'alembic'
+};
+
 function extractDependencies(text) {
   if (!text) return null;
 
@@ -12,9 +61,9 @@ function extractDependencies(text) {
     const rawTokens = match[1].trim().split(/\s+/);
     for (let token of rawTokens) {
       token = token.trim().replace(/^['"]|['"]$/g, '');
-      const cleanName = token.split(/[<>=~]/)[0].trim();
-      if (cleanName && !cleanName.startsWith('-') && !cleanName.includes('/') && !cleanName.includes('\\')) {
-        pythonPkgs.add(cleanName);
+      const cleanName = token.split(/[<>=~]/)[0].trim().toLowerCase();
+      if (cleanName && !cleanName.startsWith('-') && !cleanName.includes('/') && !cleanName.includes('\\') && !PYTHON_BUILTINS.has(cleanName)) {
+        pythonPkgs.add(CANONICAL_PYTHON_PKGS[cleanName] || cleanName);
       }
     }
   }
@@ -27,6 +76,27 @@ function extractDependencies(text) {
       const cleanName = token.split(/@/)[0].trim() || token;
       if (cleanName && !cleanName.startsWith('-') && cleanName !== 'install' && cleanName !== 'i') {
         nodePkgs.add(cleanName);
+      }
+    }
+  }
+
+  // If no explicit install command was generated, parse bulleted or listed module recommendations
+  if (pythonPkgs.size === 0 && nodePkgs.size === 0) {
+    const lines = text.split('\n');
+    for (const line of lines) {
+      const bulletMatch = line.match(/^\s*[-*•\d\.]+\s*([a-zA-Z0-9_\-]+)(?:\s*\([^)]*\))?\s*(?:or\s+([a-zA-Z0-9_\-]+))?\s*[:\-–—]/i);
+      if (bulletMatch) {
+        const rawCandidates = [bulletMatch[1], bulletMatch[2]].filter(Boolean);
+        for (const candidate of rawCandidates) {
+          const norm = candidate.trim().toLowerCase();
+          if (norm && !PYTHON_BUILTINS.has(norm)) {
+            if (CANONICAL_PYTHON_PKGS[norm]) {
+              pythonPkgs.add(CANONICAL_PYTHON_PKGS[norm]);
+            } else if (norm.length >= 3 && /^[a-z0-9_\-]+$/.test(norm)) {
+              pythonPkgs.add(norm);
+            }
+          }
+        }
       }
     }
   }

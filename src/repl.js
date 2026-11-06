@@ -287,7 +287,7 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
     } catch { }
     try {
       const { stopProcesses } = require('./commands/run');
-      stopProcesses();
+      stopProcesses([], { silentIfEmpty: true });
     } catch { }
     if (this.shell) {
       this.shell.kill();

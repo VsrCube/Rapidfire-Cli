@@ -7,6 +7,7 @@ const {
   safeSpawn,
   freeKnownPorts,
   killProcessTree,
+  getOccupiedPorts,
   stopProcesses
 } = require('../runner/processManager');
 const {
@@ -447,6 +448,7 @@ module.exports = {
   handleCliRun,
   stopProcesses,
   freeKnownPorts,
+  getOccupiedPorts,
   activeProcesses,
   safeSpawn
 };

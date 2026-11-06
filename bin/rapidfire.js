@@ -5,7 +5,7 @@ const { startRepl } = require('../src/repl');
 process.on('SIGTERM', () => {
   try {
     const { stopProcesses } = require('../src/commands/run');
-    stopProcesses();
+    stopProcesses([], { silentIfEmpty: true });
   } catch {}
   process.exit(0);
 });
@@ -52,8 +52,28 @@ if (args[0] === 'overview') {
 }
 
 if (args[0] === 'ask') {
+  const readline = require('readline');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const { handleAsk } = require('../src/commands/ask');
-  handleAsk(args.slice(1)).then(() => process.exit(0)).catch(() => process.exit(1));
+  handleAsk(args.slice(1), { rl })
+    .then(() => { rl.close(); process.exit(0); })
+    .catch(() => { rl.close(); process.exit(1); });
+  return;
+}
+
+if (args[0] === 'key') {
+  const { handleKey } = require('../src/commands/key');
+  Promise.resolve(handleKey(args.slice(1))).then(() => process.exit(0)).catch(() => process.exit(1));
+  return;
+}
+
+if (args[0] === 'deploy') {
+  const readline = require('readline');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const { handleDeploy } = require('../src/commands/deploy');
+  handleDeploy(args.slice(1), { rl })
+    .then(() => { rl.close(); process.exit(0); })
+    .catch((err) => { rl.close(); console.error(err); process.exit(1); });
   return;
 }
 
@@ -71,9 +91,9 @@ if (args[0] === 'scan') {
   }
 }
 
-if (args.includes('-h') || args.includes('--help') || (args.length === 1 && args[0] === 'help')) {
+if (args.includes('-h') || args.includes('--help') || args[0] === 'help') {
   const { showHelp } = require('../src/commands/help');
-  showHelp();
+  showHelp(args.slice(1));
   process.exit(0);
 }
 

@@ -118,6 +118,16 @@ const RECIPES = [
   'django'
 ];
 
+const COMMAND_SUBCOMMANDS = {
+  git: ['add', 'commit', 'push', 'pull', 'status', 'diff', 'branch', 'checkout', 'merge', 'clone', 'init', 'rebase'],
+  key: ['status', 'model', 'clear'],
+  save: ['preset'],
+  load: ['preset'],
+  list: ['presets'],
+  setup: RECIPES,
+  init: ['rapidfire']
+};
+
 function highlightSyntax(line) {
   if (!line) return '';
 
@@ -135,12 +145,15 @@ function highlightSyntax(line) {
 
   let coloredRest = rest;
 
-  const subMatch = coloredRest.match(/^(\s+)([^\s]+)([\s\S]*)$/);
-  if (subMatch) {
-    const [__, sp, subWord, afterSub] = subMatch;
-    const subLower = subWord.toLowerCase();
-    if (COMMON_SUBCOMMANDS.includes(subLower) || allCommands.includes(subLower) || subWord.includes('+')) {
-      coloredRest = sp + `\x1b[36m${subWord}\x1b[0m` + afterSub;
+  const validSubcommands = COMMAND_SUBCOMMANDS[lowerFirst];
+  if (validSubcommands) {
+    const subMatch = coloredRest.match(/^(\s+)([^\s]+)([\s\S]*)$/);
+    if (subMatch) {
+      const [__, sp, subWord, afterSub] = subMatch;
+      const subLower = subWord.toLowerCase();
+      if (validSubcommands.includes(subLower) || (lowerFirst === 'setup' && subWord.includes('+'))) {
+        coloredRest = sp + `\x1b[36m${subWord}\x1b[0m` + afterSub;
+      }
     }
   }
 

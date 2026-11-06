@@ -117,7 +117,55 @@ function killProcessTree(proc) {
   } catch {}
 }
 
-function stopProcesses(portArgs = []) {
+function getOccupiedPorts(ports = [3000, 3001, 4200, 5000, 5173, 8000]) {
+  if (!ports || !Array.isArray(ports) || ports.length === 0) return [];
+  const targetPorts = ports.map(Number).filter(p => !isNaN(p) && p > 0);
+  if (targetPorts.length === 0) return [];
+
+  if (process.platform === 'win32') {
+    try {
+      const output = execSync('netstat -ano -p tcp', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      const occupied = [];
+      const myPid = process.pid;
+      const parentPid = process.ppid;
+      for (const port of targetPorts) {
+        const regex = new RegExp(`^\\s*TCP\\s+[^:]+:(${port})\\s+.*LISTENING\\s+(\\d+)`, 'gmi');
+        let match;
+        while ((match = regex.exec(output)) !== null) {
+          const pid = parseInt(match[2], 10);
+          if (pid && pid > 4 && pid !== myPid && pid !== parentPid) {
+            occupied.push(port);
+            break;
+          }
+        }
+      }
+      return occupied;
+    } catch {
+      return [];
+    }
+  }
+
+  try {
+    const out = execSync('ss -tlnH 2>/dev/null', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    return targetPorts.filter(p => new RegExp(`:${p}\\b`).test(out));
+  } catch {}
+
+  const occupied = [];
+  for (const port of targetPorts) {
+    try {
+      const out = execSync(`lsof -ti :${port} -sTCP:LISTEN 2>/dev/null`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+      if (out) occupied.push(port);
+    } catch {}
+  }
+  return occupied;
+}
+
+function stopProcesses(portArgs = [], options = {}) {
+  if (!Array.isArray(portArgs) && typeof portArgs === 'object' && portArgs !== null) {
+    options = portArgs;
+    portArgs = [];
+  }
+
   const hasSpecificPorts = Array.isArray(portArgs) && portArgs.length > 0;
   const targetPorts = [];
 
@@ -131,9 +179,32 @@ function stopProcesses(portArgs = []) {
     }
   }
 
+  for (let i = activeProcesses.length - 1; i >= 0; i--) {
+    const p = activeProcesses[i];
+    if (!p || p.killed) {
+      activeProcesses.splice(i, 1);
+      continue;
+    }
+    try {
+      process.kill(p.pid, 0);
+    } catch {
+      activeProcesses.splice(i, 1);
+    }
+  }
+
   let killedCount = 0;
 
   if (targetPorts.length > 0) {
+    const occupiedBefore = getOccupiedPorts(targetPorts);
+    const hasActiveForTarget = activeProcesses.some(proc => proc && targetPorts.includes(proc.port));
+
+    if (!hasActiveForTarget && occupiedBefore.length === 0) {
+      if (!options.silentIfEmpty) {
+        console.log(`\x1b[33m[rapidfire] No active process found on port(s): ${targetPorts.join(', ')}.\x1b[0m\n`);
+      }
+      return { success: true, count: 0, ports: targetPorts };
+    }
+
     console.log(`\n\x1b[33m[rapidfire] Terminating processes on port(s): ${targetPorts.join(', ')}...\x1b[0m`);
     freeKnownPorts(targetPorts);
 
@@ -150,6 +221,16 @@ function stopProcesses(portArgs = []) {
     return { success: true, count: killedCount, ports: targetPorts };
   }
 
+  const defaultKnownPorts = [3000, 3001, 4200, 5000, 5173, 8000];
+  const occupied = getOccupiedPorts(defaultKnownPorts);
+
+  if (activeProcesses.length === 0 && occupied.length === 0) {
+    if (!options.silentIfEmpty) {
+      console.log(`\x1b[33m[rapidfire] No active servers or listening ports detected.\x1b[0m\n`);
+    }
+    return { success: true, count: 0 };
+  }
+
   console.log(`\n\x1b[33m[rapidfire] Stopping all active servers...\x1b[0m`);
   while (activeProcesses.length > 0) {
     const proc = activeProcesses.pop();
@@ -157,7 +238,12 @@ function stopProcesses(portArgs = []) {
     killedCount++;
   }
 
-  freeKnownPorts([3000, 3001, 4200, 5000, 5173, 8000]);
+  if (occupied.length > 0) {
+    freeKnownPorts(occupied);
+  } else {
+    freeKnownPorts(defaultKnownPorts);
+  }
+
   console.log(`\x1b[32m[OK] All servers stopped and ports freed.\x1b[0m\n`);
   return { success: true, count: killedCount };
 }
@@ -167,5 +253,6 @@ module.exports = {
   safeSpawn,
   freeKnownPorts,
   killProcessTree,
+  getOccupiedPorts,
   stopProcesses
 };

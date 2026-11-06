@@ -24,7 +24,7 @@ async function initGitAndHooks(projectPath, targetFolder, context = {}) {
 function terminateExistingServers() {
   try {
     const { freeKnownPorts, stopProcesses } = require('../runner/processManager');
-    stopProcesses();
+    stopProcesses([], { silentIfEmpty: true });
     freeKnownPorts([3000, 3001, 4200, 5000, 5173, 8000]);
   } catch {}
 }

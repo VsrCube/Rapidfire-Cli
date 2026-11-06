@@ -98,6 +98,9 @@ function readEnvFileKey() {
 
 function getApiKey() {
   const userConfig = getUserConfig();
+  if (userConfig && userConfig.cleared === true) {
+    return null;
+  }
   if (userConfig) {
     if (userConfig.apiKey) return userConfig.apiKey;
     if (userConfig.geminiApiKey) return userConfig.geminiApiKey;
@@ -127,8 +130,8 @@ function getActiveAiConfig() {
   const activeProvider = (userConfig.provider || detected.provider).trim();
   let activeModel = userConfig.model || detected.model;
   //fix 1 : yeh purane hardcoded gemini 1.5-flash ko 3.5 pe set kar dega.
-  if (activeModel.includes('1.5-flash')) {
-    activeModel = 'gemini-3.5-flash-lite';
+  if (activeModel.includes('1.5-flash') || activeModel === 'gemini-3.8') {
+    activeModel = 'gemini-2.5-flash';
   }
   // FIX 2: Trailing spaces aur newlines hata do taaki API 404 na de
   activeModel = activeModel.trim();
@@ -234,11 +237,139 @@ function sendOpenAiRequest({ endpoint, apiKey, model, messages, systemInstructio
   });
 }
 
+const KNOWN_MODELS = {
+  gemini: [
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-pro',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+    'gemini-flash-latest',
+    'gemini-flash-lite-latest',
+    'gemini-pro-latest',
+    'gemini-3.1-flash-lite',
+    'gemini-3-flash-preview',
+    'gemini-3.5-flash-lite'
+  ],
+  openai: [
+    'gpt-4o',
+    'gpt-4o-mini',
+    'gpt-4-turbo',
+    'gpt-4',
+    'gpt-3.5-turbo',
+    'o1',
+    'o1-mini',
+    'o3-mini'
+  ],
+  groq: [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'llama3-70b-8192',
+    'llama3-8b-8192',
+    'mixtral-8x7b-32768',
+    'gemma2-9b-it',
+    'deepseek-r1-distill-llama-70b'
+  ]
+};
+
+async function validateModel(modelName, provider = 'gemini', apiKey = null) {
+  const normProvider = (provider || 'gemini').toLowerCase();
+  const cleanModel = String(modelName || '').trim().replace(/^models\//, '');
+  const suggestions = KNOWN_MODELS[normProvider] || KNOWN_MODELS.gemini;
+
+  if (!cleanModel) {
+    return { valid: false, reason: 'empty', suggestions };
+  }
+
+  if (apiKey) {
+    if (normProvider === 'gemini') {
+      try {
+        const res = await new Promise((resolve) => {
+          const req = https.get(
+            `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}?key=${apiKey}`,
+            { timeout: 3500 },
+            (r) => {
+              let data = '';
+              r.on('data', (c) => { data += c; });
+              r.on('end', () => resolve({ statusCode: r.statusCode, data }));
+            }
+          );
+          req.on('error', () => resolve(null));
+          req.on('timeout', () => { req.destroy(); resolve(null); });
+        });
+
+        if (res) {
+          if (res.statusCode === 200) {
+            return { valid: true, model: cleanModel, suggestions };
+          }
+          if (res.statusCode === 404) {
+            return { valid: false, reason: 'not_found', statusCode: 404, suggestions };
+          }
+        }
+      } catch {}
+    } else if (normProvider === 'openai') {
+      try {
+        const res = await new Promise((resolve) => {
+          const req = https.get(
+            `https://api.openai.com/v1/models/${cleanModel}`,
+            {
+              headers: { 'Authorization': `Bearer ${apiKey}` },
+              timeout: 3500
+            },
+            (r) => resolve({ statusCode: r.statusCode })
+          );
+          req.on('error', () => resolve(null));
+          req.on('timeout', () => { req.destroy(); resolve(null); });
+        });
+
+        if (res) {
+          if (res.statusCode === 200) return { valid: true, model: cleanModel, suggestions };
+          if (res.statusCode === 404) return { valid: false, reason: 'not_found', statusCode: 404, suggestions };
+        }
+      } catch {}
+    } else if (normProvider === 'groq') {
+      try {
+        const res = await new Promise((resolve) => {
+          const req = https.get(
+            `https://api.groq.com/openai/v1/models/${cleanModel}`,
+            {
+              headers: { 'Authorization': `Bearer ${apiKey}` },
+              timeout: 3500
+            },
+            (r) => resolve({ statusCode: r.statusCode })
+          );
+          req.on('error', () => resolve(null));
+          req.on('timeout', () => { req.destroy(); resolve(null); });
+        });
+
+        if (res) {
+          if (res.statusCode === 200) return { valid: true, model: cleanModel, suggestions };
+          if (res.statusCode === 404) return { valid: false, reason: 'not_found', statusCode: 404, suggestions };
+        }
+      } catch {}
+    }
+  }
+
+  if (suggestions.includes(cleanModel)) {
+    return { valid: true, model: cleanModel, suggestions };
+  }
+
+  return {
+    valid: false,
+    reason: 'not_found',
+    suggestions
+  };
+}
+
 const GEMINI_FALLBACK_MODELS = [
-  'gemini-3.5-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-flash-latest',
   'gemini-flash-lite-latest',
-  'gemini-3.5-flash',
-  'gemini-2.5-flash'
+  'gemini-3.5-flash-lite',
+  'gemini-2.0-flash'
 ];
 
 async function queryGemini({ apiKey, modelName, prompt, systemInstruction, history = [], isChat = false }) {
@@ -362,7 +493,8 @@ CRITICAL OPERATIONAL RULES:
    - ZERO TEXTBOOK FILLER: Never explain generic programming mechanics (e.g. do not explain that Node uses process.argv, or what fs/fs-extra is). Treat the user as an experienced engineer who wants project-specific architecture.
    - Keep answers structured with short bullet points, code blocks where helpful, and concise line lengths.
 2. GENERAL INQUIRIES: If the user asks a general question unrelated to this repository (e.g. general syntax, algorithms, or external tools), answer directly, concisely, and practically as an expert coding assistant without forcing repository context.
-3. Clean Terminal Output: Provide concise, high-signal explanations with markdown code blocks where helpful. Never output emojis.`;
+3. Clean Terminal Output: Provide concise, high-signal explanations with markdown code blocks where helpful. Never output emojis.
+4. ACTIONABLE PACKAGE INSTALLATIONS: Whenever you recommend, list, or suggest external libraries, packages, or dependencies (e.g. Python pip or Node npm packages), ALWAYS include an exact installation command in a bash code block (e.g. \`\`\`bash\npip install pandas numpy scikit-learn\n\`\`\`) at the end of your explanation. This enables RapidFire CLI to offer one-keystroke automated installation to the developer.`;
 
   try {
     const text = await queryAi({
@@ -1721,6 +1853,8 @@ Provide your overview structured under these exact headers:
 
 module.exports = {
   SUPPORTED_STACKS,
+  KNOWN_MODELS,
+  validateModel,
   hasApiKey,
   getApiKey,
   getActiveAiConfig,

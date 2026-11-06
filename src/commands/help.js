@@ -14,6 +14,7 @@ function showHelp(args = []) {
   const green = '\x1b[32m';
   const yellow = '\x1b[33m';
   const magenta = '\x1b[35m';
+  const red = '\x1b[31m';
   const bold = '\x1b[1m';
   const reset = '\x1b[0m';
   const dim = '\x1b[2m';
@@ -300,6 +301,31 @@ ${bold}EXAMPLES:${reset}
       return;
     }
 
+    if (rawTopic === 'scan' || rawTopic === 'security' || rawTopic === 'shield') {
+      console.log(`
+${bold}${cyan}╔══════════════════════════════════════════════════════════════════╗
+║               RAPIDFIRE SECRET SHIELD AUDITOR                    ║
+╚══════════════════════════════════════════════════════════════════╝${reset}
+
+${bold}DESCRIPTION:${reset}
+  Zero-dependency native credential auditing. Scans files and Git diffs
+  for exposed API keys, private keys, AWS tokens, and high-entropy secrets.
+
+${bold}COMMAND SYNTAX:${reset}
+  ${green}scan [folder]${reset}                   Audit files in directory for exposed secrets
+
+${bold}FEATURES:${reset}
+  • Detects Gemini, OpenAI, Groq, Anthropic, GitHub, AWS, RSA/SSH private keys.
+  • Automatically masks and redacts secrets in terminal output.
+  • Intercepts 'git add . push' commits to block accidental leaks before push.
+
+${bold}EXAMPLES:${reset}
+  ${dim}$ scan${reset}
+  ${dim}$ scan ./backend${reset}
+`);
+      return;
+    }
+
     if (rawTopic === 'help') {
       console.log(`
 ${bold}${cyan}╔══════════════════════════════════════════════════════════════════╗
@@ -307,133 +333,68 @@ ${bold}${cyan}╔═════════════════════
 ╚══════════════════════════════════════════════════════════════════╝${reset}
 
 ${bold}USAGE:${reset}
-  ${cyan}help${reset}                           Display the comprehensive RapidFire CLI manual
+  ${cyan}help${reset}                           Display the concise RapidFire CLI command reference
   ${cyan}help <command>${reset}                 Display detailed documentation and examples for a command
 
 ${bold}AVAILABLE TOPICS:${reset}
   ${green}help setup${reset}                     Full-stack & standalone framework scaffolding recipes
-  ${green}help push${reset}                      Unified Git staging, commit, GitLeaks scan, and push
+  ${green}help push${reset}                      Unified Git staging, commit, Secret Shield scan & push
+  ${green}help scan${reset}                      Secret Shield credential auditing
+  ${green}help run / stop${reset}                 Microservice runner & process teardown (aliases: start, kill)
+  ${magenta}help ask / tell / suggest${reset}      Interactive AI generation, code preview, and Q&A
   ${magenta}help overview${reset}                  Living repo architecture & --critic audits (md/overview.md)
   ${magenta}help explain${reset}                   Source file and directory tree architectural analysis
   ${magenta}help key${reset}                       AI provider & API key credentials management
   ${yellow}help presets${reset}                   Workspace structure serialization and restoration
-  ${green}help run / stop${reset}                 Microservice runner & process teardown (aliases: start, serve, kill)
-  ${magenta}help ask / tell / suggest${reset}      Interactive AI generation, code preview, and Q&A
   ${cyan}help deploy${reset}                    Production Vercel deployment guardrails
 `);
       return;
     }
   }
 
+  const title = `RAPIDFIRE CLI — COMMAND REFERENCE (v${version})`;
+  const totalWidth = 78;
+  const paddingTotal = Math.max(0, totalWidth - 2 - title.length);
+  const padLeft = Math.floor(paddingTotal / 2);
+  const padRight = paddingTotal - padLeft;
+  const borderLine = '═'.repeat(totalWidth - 2);
+
   console.log(`
-${bold}${cyan}╔══════════════════════════════════════════════════════════════════╗
-║                     RAPIDFIRE CLI MANUAL                         ║
-║         Persistent Shell Passthrough + Scaffolding REPL          ║
-║                          Version ${version}                          ║
-╚══════════════════════════════════════════════════════════════════╝${reset}
+${bold}${cyan}╔${borderLine}╗
+║${' '.repeat(padLeft)}${title}${' '.repeat(padRight)}║
+╚${borderLine}╝${reset}
 
-${bold}PROJECT SCAFFOLDING RECIPES (12 FRONTENDS / 13 BACKENDS / UNIVERSAL PAIRINGS):${reset}
-  ${cyan}Connected Full-Stack Recipes:${reset}
-    ${green}setup react+fastapi <folder>${reset}   React (Vite) + FastAPI (Async Python)
-    ${green}setup react+django <folder>${reset}    React (Vite) + Django REST backend with SQLite
-    ${green}setup react+node <folder>${reset}      React (Vite) + Express Node.js backend
-    ${green}setup react+flask <folder>${reset}     React (Vite) + Flask Python backend
-    ${green}setup vue+fastapi <folder>${reset}     Vue 3 (Vite) + FastAPI (Async Python)
-    ${green}setup vue+node <folder>${reset}        Vue 3 (Vite) + Express Node.js backend
-    ${green}setup vue+django <folder>${reset}      Vue 3 (Vite) + Django REST backend
-    ${green}setup svelte+node <folder>${reset}     Svelte (Vite) + Express Node.js backend
-    ${green}setup angular+rust <folder>${reset}    Angular 18 (Signals) + Rust (Axum)
-    ${green}setup solid+fastapi <folder>${reset}   SolidJS + FastAPI
-    ${green}setup next+flask <folder>${reset}      Next.js + Flask
-    ${green}setup vue+hono <folder>${reset}        Vue 3 + Hono
-    ${green}setup svelte+go <folder>${reset}       Svelte + Go
+${bold}SCAFFOLDING & RECIPES:${reset}
+  ${green}setup <recipe> <dir>${reset}     Scaffold full-stack or standalone apps (e.g. react+django, react+fastapi)
+  ${green}init${reset}                     Interactive scaffolding wizard with step-by-step prompts
 
-  ${cyan}Standalone Frontends:${reset}
-    ${green}setup react <folder>${reset}          Standalone React (Vite) project
-    ${green}setup vue <folder>${reset}            Standalone Vue 3 (Vite) project
-    ${green}setup svelte <folder>${reset}         Standalone Svelte (Vite) project
-    ${green}setup angular <folder>${reset}        Standalone Angular 18 (Vite) project
-    ${green}setup solid <folder>${reset}          Standalone SolidJS (Vite) project
-    ${green}setup next <folder>${reset}           Standalone Next.js project
+${bold}DEV RUNNER & PROCESSES:${reset}
+  ${green}run [dir]${reset}                Auto-launch frontend + backend dev servers (aliases: start, serve)
+  ${green}stop [port]${reset}              Terminate dev servers or free occupied port (alias: kill)
 
-  ${cyan}Standalone Backends:${reset}
-    ${green}setup fastapi <folder>${reset}         Standalone high-performance FastAPI backend
-    ${green}setup django <folder>${reset}          Standalone Django backend with SQLite
-    ${green}setup rust <folder>${reset}            Standalone Rust (Axum) backend
-    ${green}setup go <folder>${reset}              Standalone Go backend
-    ${green}setup hono <folder>${reset}            Standalone Hono backend
+${bold}SECURITY & GIT AUTOMATION:${reset}
+  ${green}git add . push -m -commit "msg"${reset} Stage, Secret Shield scan, commit & push in one shot
+  ${green}scan [dir]${reset}               Audit codebase for exposed API keys, tokens & credentials
 
-  ${cyan}Universal Framework Pairings & Scaffolding:${reset}
-    ${green}setup <fe>+<be> <folder>${reset}       Arbitrary connected full-stack combinations
-    ${dim}Frontends: react, vue, svelte, angular, solid, preact, qwik, lit, astro, next, nuxt, sveltekit${reset}
-    ${dim}Backends:  fastapi, django, flask, express, hono, fastify, nest, koa, rust, go, ruby, php, dotnet${reset}
-    ${green}setup <unknown> <folder>${reset}       Dynamically scaffold any framework via AI/heuristic fallback
+${bold}AI COPILOT:${reset}
+  ${magenta}ask <question>${reset}           Technical Q&A with context memory & 1-click package installer
+  ${magenta}ask clear${reset}                Reset conversational context memory
+  ${magenta}tell <instruction>${reset}       Generate code & files with structure preview & (Y/N) approval
+  ${magenta}suggest <idea>${reset}           Recommend tech stack with 1-click scaffolding prompt
+  ${magenta}overview [--critic]${reset}      Living repo architecture & security audit (md/overview.md)
+  ${magenta}explain [file|dir]${reset}       Analyze codebase architecture or source file role
 
-  ${cyan}Initialization:${reset}
-    ${green}init [rapidfire]${reset}              Interactive scaffolding guide & prompt wizard
+${bold}CONFIG & DEPLOYMENT:${reset}
+  ${magenta}key <api-key>${reset}            Save API key (auto-detects Gemini, Groq, OpenAI)
+  ${magenta}key model <name>${reset}         Switch active LLM model (e.g. gemini-2.5-flash)
+  ${magenta}key status | clear${reset}       View active configuration or clear stored credentials
+  ${cyan}deploy vercel [dir]${reset}      Deploy frontend to Vercel production
+  ${yellow}presets${reset} / ${yellow}save preset${reset}     Save, list, or restore workspace structure templates
 
-${bold}AI CODE GENERATION & ARCHITECTURE:${reset}
-  ${magenta}overview [--critic] [dir]${reset}     Living repo architecture & Security overview (exports md/overview.md)
-                                (--critic audits pros/cons, flaws, & security to md/overview_critic.md)
-  ${magenta}explain [file|folder]${reset}         Analyze codebase architecture, folder tree, or source file role
-                                (exports formatted report to md/explanation.md)
-  ${magenta}tell <instruction>${reset}            Generate files & code with structure preview & (Y/N) safety approval
-                                (e.g. "tell create 2 cpp files named m1 m2")
-  ${magenta}suggest <description>${reset}         Recommend architecture stack with interactive (Y/N) scaffolding prompt
-  ${magenta}ask <question>${reset}                Technical Q&A with conversational context & 1-click dependency installer
-  ${magenta}ask clear${reset}                     Reset multi-turn conversational context memory
-
-${bold}AI PROVIDER & API KEY CONFIGURATION:${reset}
-  ${magenta}key <api-key>${reset}                 Save or update API key (auto-detects Groq, OpenAI, or Gemini)
-  ${magenta}key model <model-name>${reset}        Override active model (e.g. "key model gpt-4o-mini", "gemini-3.5-flash-lite")
-  ${magenta}key status${reset}                    Show active provider, model, masked key, and config source
-  ${magenta}key clear${reset}                     Remove saved credentials from ~/.rapidfire/config.json
-
-${bold}PROJECT PRESETS & REPRODUCIBILITY:${reset}
-  ${yellow}save preset <name> [folder]${reset}    Serialize project tree, files, and manifest into ~/.rapidfire/presets/
-  ${yellow}load preset <name> <folder>${reset}    Restore project structure and files from saved JSON preset
-  ${yellow}presets${reset} / ${yellow}list presets${reset}          List all saved project presets with timestamps & file counts
-
-${bold}SECURITY & SECRET SCANNING:${reset}
-  ${red}scan [folder]${reset}                   Audit repository or folder for exposed API keys, tokens, & secrets
-                                (Native zero-dependency Secret Shield with automated redaction)
-
-${bold}GIT & GITHUB AUTOMATION:${reset}
-  ${green}git add <files> push [-b <branch>|-m] -commit "msg"${reset}
-  ${green}add <files> push [-b <branch>|-m] -commit "msg"${reset}
-  ${green}push [-b <branch>|-m] -commit "msg"${reset}
-                                Stage files (or .), Secret Shield scan, commit, and push in one command
-                                • Push to main: "git add . push -m -commit 'Add server module'"
-                                • Current branch: "push -m 'Update user dashboard'"
-                                • Specific branch: "push -b feature1 -commit 'new feature'"
-                                • Shorthand: "git add . push -main -commit 'msg'"
-                                • Single file: "git add README.md push -m 'updated docs'"
-                                • Native Secret Shield: Pre-commit & pre-push scanning blocks leaks BEFORE commit
-                                • Automatically recovers and syncs via rebase if remote is ahead
-                                • Automatically links remote repository via GitHub CLI (gh) if needed
-
-${bold}PRODUCTION DEPLOYMENT:${reset}
-  ${cyan}deploy vercel [folder]${reset}         Deploy frontend to Vercel production with clean working tree verification
-
-${bold}APPLICATION EXECUTION & PROCESS RUNNER:${reset}
-  ${green}run [folder]${reset}                    Launch microservice dev servers (FastAPI / Express + React / Vue / Svelte)
-                                Aliases: ${green}start${reset}, ${green}serve${reset}. Auto-detects runtime ports dynamically.
-  ${green}stop${reset}                            Stop all active background application dev servers and free ports
-                                Alias: ${green}kill${reset}. (Or press ${cyan}Ctrl+C${reset} during execution)
-
-${bold}SESSION & UTILITY COMMANDS:${reset}
-  ${cyan}help [command]${reset}                 Display this command reference or focused help (e.g. "help push")
-  ${cyan}clear${reset} / ${cyan}cls${reset}                     Clear terminal screen buffer instantly
-  ${cyan}version${reset} / ${cyan}-v${reset} / ${cyan}--version${reset}        Display active RapidFire CLI version (${version})
-  ${cyan}rapidfire${reset} / ${cyan}rapidfire-cli${reset}      Re-display session banner and status within active REPL
-  ${cyan}exit${reset} / ${cyan}quit${reset}                    Exit Rapidfire cleanly
-
-${bold}SHELL PASSTHROUGH:${reset}
-  ${dim}Any other command (e.g. ls, git, pwd, cd, docker, npm, python, pip, gh, curl) executes
-  directly inside the persistent background pseudo-terminal. Working directory,
-  environment variables, and shell state are fully preserved.${reset}
-
-${dim}Tip: Run "help <command>" (e.g. "help setup", "help push", "help key") for in-depth examples.${reset}
+${bold}UTILITIES & SHELL PASSTHROUGH:${reset}
+  ${cyan}help <command>${reset}           In-depth manual & examples (e.g. 'help setup', 'help push')
+  ${cyan}clear | version | exit${reset}   Clear screen, view version, or cleanly quit session
+  ${dim}<any shell command>      Native passthrough: git, npm, python, docker, ls, cd, curl, gh${reset}
 `);
 }
 

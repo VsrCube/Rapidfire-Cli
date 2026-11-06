@@ -1,7 +1,13 @@
 const { saveUserConfig, getUserConfig } = require('../utils/configPath');
-const { getApiKey, getActiveAiConfig, detectProvider } = require('../ai/provider');
+const {
+  getApiKey,
+  getActiveAiConfig,
+  detectProvider,
+  validateModel,
+  KNOWN_MODELS
+} = require('../ai/provider');
 
-function handleKey(args) {
+async function handleKey(args) {
   const sub = args[0]?.trim();
 
   if (!sub) {
@@ -51,22 +57,49 @@ function handleKey(args) {
       apiKey: null,
       geminiApiKey: null,
       provider: null,
-      model: null
+      model: null,
+      cleared: true
     });
-    console.log(`\n\x1b[32m[OK] Cleared AI API key from ~/.rapidfire/config.json.\x1b[0m\n`);
+    console.log(`\n\x1b[32m[OK] Cleared AI API key configuration.\x1b[0m\n`);
     return;
   }
 
   if (sub.toLowerCase() === 'model') {
+    const config = getActiveAiConfig();
+    const provider = (config.provider || 'gemini').toLowerCase();
+    const providerName = config.name || config.provider || 'Gemini';
     const modelName = args[1]?.trim();
+
     if (!modelName) {
-      const current = getActiveAiConfig().model;
-      console.log(`\nCurrent AI model: \x1b[36m${current}\x1b[0m`);
+      console.log(`\nCurrent AI model: \x1b[36m${config.model}\x1b[0m (Provider: \x1b[33m${providerName}\x1b[0m)`);
       console.log(`To change: \x1b[32mkey model <model-name>\x1b[0m\n`);
+      console.log(`Popular valid models for ${providerName}:`);
+      const suggestions = (KNOWN_MODELS && KNOWN_MODELS[provider]) || (KNOWN_MODELS && KNOWN_MODELS.gemini) || [];
+      for (const m of suggestions.slice(0, 6)) {
+        console.log(`  • \x1b[36m${m}\x1b[0m`);
+      }
+      console.log('');
       return;
     }
-    saveUserConfig({ model: modelName });
-    console.log(`\n\x1b[32m[OK] AI model updated to:\x1b[0m \x1b[36m${modelName}\x1b[0m\n`);
+
+    console.log(`\x1b[90m[rapidfire-ai] Validating model '${modelName}' for ${providerName}...\x1b[0m`);
+    const validation = await validateModel(modelName, provider, config.apiKey);
+
+    if (!validation.valid) {
+      console.log(`\n\x1b[31m[rapidfire-ai] Error: Model '${modelName}' does not exist or is not supported by ${providerName}.\x1b[0m`);
+      console.log(`\x1b[33mThe AI model was not updated.\x1b[0m\n`);
+      console.log(`Please set a valid model. Available options for ${providerName}:`);
+      const suggestions = validation.suggestions || (KNOWN_MODELS && KNOWN_MODELS[provider]) || (KNOWN_MODELS && KNOWN_MODELS.gemini) || [];
+      for (const m of suggestions.slice(0, 6)) {
+        console.log(`  • \x1b[32m${m}\x1b[0m`);
+      }
+      console.log(`\nRun: \x1b[32mkey model <valid-model-name>\x1b[0m (e.g. \x1b[36mkey model ${suggestions[0] || 'gemini-2.5-flash'}\x1b[0m)\n`);
+      return;
+    }
+
+    saveUserConfig({ model: validation.model });
+    console.log(`\n\x1b[32m[OK] AI model successfully validated and updated to:\x1b[0m \x1b[36m${validation.model}\x1b[0m`);
+    console.log(`  Provider: \x1b[33m${providerName}\x1b[0m\n`);
     return;
   }
 
@@ -81,7 +114,8 @@ function handleKey(args) {
     apiKey: newKey,
     geminiApiKey: newKey,
     provider: detected.provider,
-    model: detected.model
+    model: detected.model,
+    cleared: false
   });
 
   const masked = `${newKey.slice(0, 5)}...${newKey.slice(-4)}`;
