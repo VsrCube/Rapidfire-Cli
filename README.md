@@ -1,4 +1,4 @@
-# RapidFire CLI 🚀
+# RapidFire CLI 
 
 **A developer CLI tool that makes project setup, terminal operations, and development workflows easier.**
 
@@ -8,7 +8,7 @@ The idea behind RapidFire is to reduce the time spent switching between differen
 
 ---
 
-## 💡 What is RapidFire?
+##  What is RapidFire?
 
 Developers often need to create project structures, install dependencies, configure environments, run applications, manage Git repositories, and search for solutions while coding.
 
@@ -18,7 +18,7 @@ It also supports normal shell commands, so developers can continue using command
 
 ---
 
-## ✨ Features
+##  Features
 
 - **Interactive Terminal:** A persistent terminal environment with shell command support.
 - **Project Scaffolding:** Create frontend, backend, and full-stack projects using predefined templates.
@@ -34,7 +34,7 @@ It also supports normal shell commands, so developers can continue using command
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 | Technology | Purpose |
 |---|---|
@@ -48,7 +48,7 @@ It also supports normal shell commands, so developers can continue using command
 
 ---
 
-## 📦 Installation
+##  Installation
 
 ### Requirements
 
@@ -70,7 +70,7 @@ rapidfire
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Create a project
 
@@ -124,7 +124,7 @@ load preset my-workspace my-project
 
 ---
 
-## 📚 Commands
+##  Commands
 
 | Command | Description |
 |---|---|
@@ -160,7 +160,7 @@ etc
 
 ---
 
-## 🏗️ Project Architecture
+##  Project Architecture
 
 RapidFire CLI is organized into different modules that handle specific functionalities.
 
@@ -195,7 +195,7 @@ RapidFire CLI
 
 ---
 
-## 🔐 Security
+##  Security
 
 RapidFire includes security-related features to reduce common development mistakes:
 
@@ -207,7 +207,7 @@ RapidFire includes security-related features to reduce common development mistak
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 The project includes automated tests for different modules and functionalities.
 
@@ -219,7 +219,7 @@ npm test
 
 ---
 
-## 👨‍💻 Development Setup
+##  Development Setup
 
 Clone the repository:
 
@@ -247,7 +247,7 @@ npm start
 
 ---
 
-## 🎯 Project Objective
+##  Project Objective
 
 The main objective of RapidFire CLI is to make the development workflow easier by combining multiple commonly used developer tools and operations into a single command-line environment.
 
@@ -255,7 +255,7 @@ It aims to reduce repetitive tasks, simplify project initialization, and improve
 
 ---
 
-## 👥 Contributors
+##  Contributors
 
 Developed as a collaborative project.
 
@@ -263,7 +263,7 @@ Contributions include project development, terminal functionality, automation, d
 
 ---
 
-## 📄 License
+##  License
 
 This project is licensed under the MIT License.
 MIT (c) Vedansh Shrivastava (@VsrCube)
