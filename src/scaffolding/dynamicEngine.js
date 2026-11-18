@@ -1917,5 +1917,6 @@ module.exports = {
   getDynamicFrontendFiles,
   getDynamicBackendFiles,
   scaffoldDynamicFullstack,
-  scaffoldDynamicFramework
+  scaffoldDynamicFramework,
+  isBuiltinDynamicStack
 };

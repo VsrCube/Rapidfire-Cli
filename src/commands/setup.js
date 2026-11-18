@@ -10,6 +10,73 @@ const { scaffoldDynamicFramework } = require('../scaffolding/dynamicEngine');
 const { getParentGitRepo, promptConfirmation, promptInput, setupGitAndGithub } = require('../utils/gitContext');
 const { getFrontendAdapter, hasFrontendAdapter, normalizeFrontendName } = require('../scaffolding/adapters/frontend');
 const { getBackendAdapter, hasBackendAdapter, normalizeBackendName, getBackendDefaultPort } = require('../scaffolding/adapters/backend');
+const { isBuiltinDynamicStack } = require('../scaffolding/dynamicEngine');
+
+const ALL_KNOWN_RECIPES = [
+  'react+fastapi',
+  'react+django',
+  'react+node',
+  'react+flask',
+  'vue+fastapi',
+  'vue+node',
+  'vue+django',
+  'svelte+node',
+  'angular+rust',
+  'solid+fastapi',
+  'next+flask',
+  'vue+hono',
+  'svelte+go',
+  'react',
+  'vue',
+  'svelte',
+  'angular',
+  'solid',
+  'next',
+  'fastapi',
+  'django',
+  'rust',
+  'go',
+  'hono'
+];
+
+function getRecipeSuggestions(input, filterPrefix = '') {
+  const clean = (input || '').toLowerCase().trim();
+  let matches = [];
+  if (filterPrefix) {
+    const prefixMatches = ALL_KNOWN_RECIPES.filter((r) => r.startsWith(filterPrefix + '+'));
+    matches.push(...prefixMatches);
+  }
+  if (clean) {
+    const cleanMatches = ALL_KNOWN_RECIPES.filter((r) => r.includes(clean) || clean.includes(r));
+    matches.push(...cleanMatches);
+  }
+  const combined = Array.from(new Set([...matches, ...ALL_KNOWN_RECIPES]));
+  return combined.slice(0, 6);
+}
+
+function renderRecipeErrorCard(title, details, suggestions = []) {
+  const bold = '\x1b[1m';
+  const red = '\x1b[31m';
+  const yellow = '\x1b[33m';
+  const cyan = '\x1b[36m';
+  const reset = '\x1b[0m';
+
+  const cardTitle = (title || 'ERROR: INVALID RECIPE').slice(0, 60);
+  console.log(`\n${bold}${red}╔══════════════════════════════════════════════════════════════════╗${reset}`);
+  console.log(`${bold}${red}║  ${cardTitle.padEnd(62)}  ║${reset}`);
+  console.log(`${bold}${red}╚══════════════════════════════════════════════════════════════════╝${reset}\n`);
+
+  if (details) {
+    console.log(`  \x1b[31m${details}\x1b[0m\n`);
+  }
+
+  const list = (suggestions && suggestions.length > 0) ? suggestions : getRecipeSuggestions('');
+  console.log(`${bold}${yellow}Suggested recipes:${reset}`);
+  for (const s of list.slice(0, 6)) {
+    console.log(`  ${cyan}• setup ${s}${reset}`);
+  }
+  console.log(`\nType ${cyan}help setup${reset} to see all supported framework recipes.\n`);
+}
 
 const LTS_VERSIONS = {
   react: '^18.3.1',
@@ -219,15 +286,12 @@ async function handleSetup(args = [], context = {}) {
   let targetFolder = args[1];
 
   if (!stack) {
-    console.log('\x1b[33m[rapidfire] Usage: setup <stack> [folder-name]\x1b[0m');
-    console.log('Examples:');
-    console.log('  • setup react+fastapi my-app');
-    console.log('  • setup react+fastapi          (scaffold directly into current folder)');
-    console.log('  • setup vue+express');
-    console.log('  • setup angular+rust');
-    console.log('  • setup react');
-    console.log('  • setup fastapi');
-    return;
+    renderRecipeErrorCard(
+      'ERROR: MISSING RECIPE SPECIFICATION',
+      'Please specify a valid recipe or framework pairing (e.g. setup react+fastapi).',
+      ['react+fastapi', 'react+node', 'react', 'fastapi', 'vue+fastapi', 'django']
+    );
+    return { success: false, error: 'MISSING_RECIPE' };
   }
 
   const isCurrentDir = !targetFolder || targetFolder === '.' || targetFolder === './';
@@ -250,16 +314,34 @@ async function handleSetup(args = [], context = {}) {
   }
 
   if (stack.includes('+')) {
-    let [rawFe, rawBe] = stack.split('+');
+    const parts = stack.split('+');
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+      renderRecipeErrorCard(
+        'ERROR: INVALID RECIPE FORMAT',
+        `A recipe pairing must have exactly two components: <frontend>+<backend>. Received: '${stack}'.`,
+        getRecipeSuggestions(parts[0] || '')
+      );
+      return { success: false, error: 'INVALID_FORMAT' };
+    }
+
+    let [rawFe, rawBe] = parts;
     let normFe = normalizeFrontendName(rawFe);
     let normBe = normalizeBackendName(rawBe);
 
     if (hasFrontendAdapter(normFe) && hasFrontendAdapter(normBe)) {
-      console.error(`\x1b[31m[rapidfire] Error: Cannot pair two frontends together ('${stack}'). Please specify a frontend + backend pairing.\x1b[0m`);
+      renderRecipeErrorCard(
+        'ERROR: INVALID RECIPE PAIRING',
+        `Cannot pair two frontends together ('${stack}'). Please specify a frontend + backend pairing.`,
+        getRecipeSuggestions(normFe, normFe)
+      );
       return { success: false, error: 'INVALID_PAIRING' };
     }
     if (hasBackendAdapter(normFe) && hasBackendAdapter(normBe)) {
-      console.error(`\x1b[31m[rapidfire] Error: Cannot pair two backends together ('${stack}'). Please specify a frontend + backend pairing.\x1b[0m`);
+      renderRecipeErrorCard(
+        'ERROR: INVALID RECIPE PAIRING',
+        `Cannot pair two backends together ('${stack}'). Please specify a frontend + backend pairing.`,
+        getRecipeSuggestions(normBe)
+      );
       return { success: false, error: 'INVALID_PAIRING' };
     }
 
@@ -272,6 +354,20 @@ async function handleSetup(args = [], context = {}) {
       rawBe = tmpRaw;
     }
 
+    const feValid = hasFrontendAdapter(normFe) || isBuiltinDynamicStack(normFe);
+    const beValid = hasBackendAdapter(normBe) || isBuiltinDynamicStack(normBe);
+
+    if (!feValid || !beValid) {
+      const invalidPart = !feValid ? rawFe : rawBe;
+      const partType = !feValid ? 'frontend' : 'backend';
+      renderRecipeErrorCard(
+        'ERROR: UNRECOGNIZED RECIPE COMPONENT',
+        `Unknown ${partType} '${invalidPart}' in pairing '${stack}'.`,
+        getRecipeSuggestions(feValid ? normFe : invalidPart, feValid ? normFe : '')
+      );
+      return { success: false, error: 'UNKNOWN_COMPONENT' };
+    }
+
     const ready = await ensureTargetDirectoryReady(projectPath, targetFolder, isCurrentDir, true, args, context);
     if (!ready) {
       return { success: false, error: 'TARGET_EXISTS' };
@@ -281,6 +377,18 @@ async function handleSetup(args = [], context = {}) {
       if (!checkRuntimePrerequisites(normBe)) return;
       await setupFullstack(projectPath, displayFolderName, rawFe, rawBe, context, isCurrentDir, targetFolder);
       return;
+    }
+  } else {
+    const isKnownStandalone = hasFrontendAdapter(stack) ||
+                              hasBackendAdapter(stack) ||
+                              isBuiltinDynamicStack(stack);
+    if (!isKnownStandalone) {
+      renderRecipeErrorCard(
+        'ERROR: UNRECOGNIZED RECIPE NAME',
+        `Recipe '${stack}' is not recognized as a supported framework or stack.`,
+        getRecipeSuggestions(stack)
+      );
+      return { success: false, error: 'UNKNOWN_RECIPE' };
     }
   }
 
@@ -305,8 +413,12 @@ async function handleSetup(args = [], context = {}) {
     return;
   }
 
-  console.error(`\x1b[31m[rapidfire] Unknown recipe '${stack}'.\x1b[0m`);
-  console.log('Type "help" to see all supported framework recipes.');
+  renderRecipeErrorCard(
+    'ERROR: UNRECOGNIZED RECIPE NAME',
+    `Recipe '${stack}' is not recognized.`,
+    getRecipeSuggestions(stack)
+  );
+  return { success: false, error: 'UNKNOWN_RECIPE' };
 }
 
 function getBackendRunInstruction(normBe, port) {

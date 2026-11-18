@@ -52,7 +52,7 @@ function matchCommand(line) {
     };
   }
 
-  if (cmd === 'stop' || cmd === 'kill' || cmd === 'stopp' || cmd === 'sotp' || cmd === 'stp') {
+  if (cmd === 'stop' || cmd === 'kill') {
     return {
       name: 'stop',
       run: async () => {
@@ -171,17 +171,19 @@ function matchCommand(line) {
     };
   }
 
-  if (cmd === 'save' && tokens[1]?.toLowerCase() === 'preset') {
+  if (cmd === 'save') {
+    const isPreset = tokens[1]?.toLowerCase() === 'preset';
     return {
       name: 'save preset',
-      run: async () => handleSavePreset(tokens.slice(2))
+      run: async () => handleSavePreset(isPreset ? tokens.slice(2) : tokens.slice(1))
     };
   }
 
-  if (cmd === 'load' && tokens[1]?.toLowerCase() === 'preset') {
+  if (cmd === 'load') {
+    const isPreset = tokens[1]?.toLowerCase() === 'preset';
     return {
       name: 'load preset',
-      run: async () => handleLoadPreset(tokens.slice(2))
+      run: async () => handleLoadPreset(isPreset ? tokens.slice(2) : tokens.slice(1))
     };
   }
 

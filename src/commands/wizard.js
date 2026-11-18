@@ -14,6 +14,9 @@ const STACK_PRESETS = [
   { id: '10', key: 'django', label: 'Standalone Django (Python)' }
 ];
 
+let pipedLines = null;
+let pipedIndex = 0;
+
 async function askQuestion(context, question, defaultAnswer = '') {
   if (process.env.RAPIDFIRE_NON_INTERACTIVE === '1') {
     return defaultAnswer;
@@ -22,6 +25,24 @@ async function askQuestion(context, question, defaultAnswer = '') {
   let answer = '';
   if (context && typeof context.ask === 'function') {
     answer = await context.ask(question);
+  } else if (!process.stdin.isTTY) {
+    if (pipedLines === null) {
+      try {
+        const fs = require('fs');
+        const buf = fs.readFileSync(0, 'utf-8');
+        pipedLines = buf.split(/\r?\n/);
+      } catch {
+        pipedLines = [];
+      }
+    }
+    process.stdout.write(question);
+    if (pipedIndex < pipedLines.length) {
+      answer = pipedLines[pipedIndex++];
+      process.stdout.write(answer + '\n');
+    } else {
+      answer = defaultAnswer;
+      process.stdout.write(defaultAnswer + '\n');
+    }
   } else if (context && context.rl) {
     answer = await new Promise((resolve) => {
       context.rl.question(question, (ans) => resolve(ans));

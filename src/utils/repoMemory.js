@@ -58,6 +58,10 @@ function findRepoRoot(startDir = process.cwd()) {
 }
 
 function getMemoryDbPath(repoRoot) {
+  const repoMemPath = path.join(repoRoot, '.rapidfire', 'repo_memory.json');
+  if (fs.existsSync(repoMemPath)) {
+    return repoMemPath;
+  }
   return path.join(repoRoot, '.rapidfire', 'memory.json');
 }
 
@@ -110,6 +114,10 @@ function initRepoDatabase(repoRoot = findRepoRoot()) {
       lastUpdated: new Date().toISOString()
     };
     fs.writeFileSync(dbPath, JSON.stringify(initialData, null, 2), 'utf8');
+    try {
+      const altPath = path.join(rfDir, 'repo_memory.json');
+      if (altPath !== dbPath) fs.writeFileSync(altPath, JSON.stringify(initialData, null, 2), 'utf8');
+    } catch {}
     return initialData;
   }
 
@@ -158,11 +166,23 @@ function saveRepoMemory(repoRoot = findRepoRoot(), memoryData = {}) {
   try {
     fs.writeFileSync(tempPath, JSON.stringify(dataToSave, null, 2), 'utf8');
     fs.renameSync(tempPath, dbPath);
+    try {
+      const altPath = dbPath.endsWith('repo_memory.json')
+        ? path.join(rfDir, 'memory.json')
+        : path.join(rfDir, 'repo_memory.json');
+      fs.writeFileSync(altPath, JSON.stringify(dataToSave, null, 2), 'utf8');
+    } catch {}
     return true;
   } catch (err) {
     try {
       fs.writeFileSync(dbPath, JSON.stringify(dataToSave, null, 2), 'utf8');
       if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      try {
+        const altPath = dbPath.endsWith('repo_memory.json')
+          ? path.join(rfDir, 'memory.json')
+          : path.join(rfDir, 'repo_memory.json');
+        fs.writeFileSync(altPath, JSON.stringify(dataToSave, null, 2), 'utf8');
+      } catch {}
       return true;
     } catch {
       return false;

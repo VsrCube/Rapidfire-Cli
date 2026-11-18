@@ -34,20 +34,57 @@ if (args[0] === 'setup') {
   const { handleSetup } = require('../src/commands/setup');
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   handleSetup(args.slice(1), { rl })
-    .then(() => { rl.close(); process.exit(0); })
+    .then((res) => {
+      rl.close();
+      if (res && res.success === false) {
+        process.exit(1);
+      }
+      process.exit(0);
+    })
+    .catch((err) => { rl.close(); console.error(err); process.exit(1); });
+  return;
+}
+
+if (args[0] === 'init') {
+  const readline = require('readline');
+  const { runInitWizard } = require('../src/commands/wizard');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const wizardArgs = args.slice(1).filter((t) => t.toLowerCase() !== 'rapidfire');
+  runInitWizard({ rl }, wizardArgs)
+    .then((res) => {
+      rl.close();
+      if (res && res.success === false) {
+        process.exit(1);
+      }
+      process.exit(0);
+    })
     .catch((err) => { rl.close(); console.error(err); process.exit(1); });
   return;
 }
 
 if (args[0] === 'explain') {
   const { handleExplain } = require('../src/commands/explain');
-  handleExplain(args.slice(1)).then(() => process.exit(0)).catch(() => process.exit(1));
+  handleExplain(args.slice(1))
+    .then((res) => {
+      if (res && res.success === false) {
+        process.exit(1);
+      }
+      process.exit(0);
+    })
+    .catch(() => process.exit(1));
   return;
 }
 
 if (args[0] === 'overview') {
   const { handleOverview } = require('../src/commands/overview');
-  handleOverview(args.slice(1)).then(() => process.exit(0)).catch(() => process.exit(1));
+  handleOverview(args.slice(1))
+    .then((res) => {
+      if (res && res.success === false) {
+        process.exit(1);
+      }
+      process.exit(0);
+    })
+    .catch(() => process.exit(1));
   return;
 }
 
@@ -58,6 +95,46 @@ if (args[0] === 'ask') {
   handleAsk(args.slice(1), { rl })
     .then(() => { rl.close(); process.exit(0); })
     .catch(() => { rl.close(); process.exit(1); });
+  return;
+}
+
+if (args[0] === 'tell') {
+  const readline = require('readline');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const { handleTell } = require('../src/commands/tell');
+  handleTell(args.slice(1), { rl })
+    .then((res) => {
+      rl.close();
+      if (res && res.success === false && !res.cancelled) {
+        process.exit(1);
+      }
+      process.exit(0);
+    })
+    .catch((err) => {
+      rl.close();
+      console.error(err);
+      process.exit(1);
+    });
+  return;
+}
+
+if (args[0] === 'suggest') {
+  const readline = require('readline');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const { handleSuggest } = require('../src/commands/suggest');
+  handleSuggest(args.slice(1), { rl })
+    .then(() => { rl.close(); process.exit(0); })
+    .catch((err) => { rl.close(); console.error(err); process.exit(1); });
+  return;
+}
+
+if (args[0] === 'tell') {
+  const readline = require('readline');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const { handleTell } = require('../src/commands/tell');
+  handleTell(args.slice(1), { rl })
+    .then(() => { rl.close(); process.exit(0); })
+    .catch((err) => { rl.close(); console.error(err); process.exit(1); });
   return;
 }
 
@@ -72,7 +149,7 @@ if (args[0] === 'deploy') {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const { handleDeploy } = require('../src/commands/deploy');
   handleDeploy(args.slice(1), { rl })
-    .then(() => { rl.close(); process.exit(0); })
+    .then((res) => { rl.close(); process.exit(res && res.success ? 0 : 1); })
     .catch((err) => { rl.close(); console.error(err); process.exit(1); });
   return;
 }
@@ -89,6 +166,45 @@ if (args[0] === 'scan') {
     console.log(`\x1b[32m[OK] [rapidfire-security] Scanned ${res.scannedFiles} file(s). No leaked secrets or credentials detected!\x1b[0m\n`);
     process.exit(0);
   }
+}
+
+if (args[0] === 'push' || (args[0] === 'git' && args[1] === 'push')) {
+  const { handlePush } = require('../src/commands/push');
+  handlePush(process.argv.slice(2))
+    .then((res) => {
+      process.exit(res && res.success ? 0 : 1);
+    })
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+  return;
+}
+
+if (args[0] === 'save' && (args[1] === 'preset' || !args[1])) {
+  const { handleSavePreset } = require('../src/commands/preset');
+  const presetArgs = args[1] === 'preset' ? args.slice(2) : args.slice(1);
+  const res = handleSavePreset(presetArgs);
+  if (res && res.success === false) {
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
+if (args[0] === 'load' && (args[1] === 'preset' || !args[1])) {
+  const { handleLoadPreset } = require('../src/commands/preset');
+  const presetArgs = args[1] === 'preset' ? args.slice(2) : args.slice(1);
+  const res = handleLoadPreset(presetArgs);
+  if (res && res.success === false) {
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
+if ((args[0] === 'list' && args[1] === 'presets') || args[0] === 'presets') {
+  const { handleListPresets } = require('../src/commands/preset');
+  handleListPresets();
+  process.exit(0);
 }
 
 if (args.includes('-h') || args.includes('--help') || args[0] === 'help') {

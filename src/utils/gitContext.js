@@ -35,7 +35,9 @@ async function promptConfirmation(context, question, defaultChoice = 'n') {
 
   let answer = defaultChoice;
 
-  if (context && typeof context.ask === 'function') {
+  if (context && context.mockAnswer !== undefined) {
+    answer = context.mockAnswer;
+  } else if (context && typeof context.ask === 'function') {
     answer = await context.ask(question);
   } else if (context && context.rl) {
     answer = await new Promise((resolve) => {
@@ -149,6 +151,8 @@ async function setupGitAndGithub(projectPath, targetFolder, context = {}) {
         const res = createRepo(projectPath, repoName, !isPublic);
         if (res && res.success) {
           console.log(`\x1b[32m[OK] Remote GitHub repository '${repoName}' created and linked to origin!\x1b[0m`);
+        } else if (res && (res.reason === 'secrets_blocked' || res.reason === 'commit_failed')) {
+          // Handled cleanly by createRepo
         } else if (res) {
           console.log(`\x1b[33m[WARN] Could not create GitHub repository: ${res.message || res.error}\x1b[0m`);
         }

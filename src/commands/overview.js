@@ -5,6 +5,34 @@ const { generateRepoOverview } = require('../ai/gemini');
 const { findRepoRoot, recordOverviewEntry } = require('../utils/repoMemory');
 const { formatMarkdownForTerminal, renderTerminalBox } = require('./ask');
 
+function renderOverviewErrorCard(title, details, suggestions = []) {
+  const bold = '\x1b[1m';
+  const red = '\x1b[31m';
+  const yellow = '\x1b[33m';
+  const cyan = '\x1b[36m';
+  const reset = '\x1b[0m';
+
+  const cardTitle = (title || 'ERROR: REPOSITORY NOT FOUND').slice(0, 60);
+  console.log(`\n${bold}${red}╔══════════════════════════════════════════════════════════════════╗${reset}`);
+  console.log(`${bold}${red}║  ${cardTitle.padEnd(62)}  ║${reset}`);
+  console.log(`${bold}${red}╚══════════════════════════════════════════════════════════════════╝${reset}\n`);
+
+  if (details) {
+    console.log(`  \x1b[31m${details}\x1b[0m\n`);
+  }
+
+  const list = (suggestions && suggestions.length > 0) ? suggestions : [
+    'overview                       (overview of current repository)',
+    'overview --critic              (senior architectural critique of current repo)',
+    'overview <path-to-folder>      (overview of target directory)'
+  ];
+  console.log(`${bold}${yellow}Usage & Examples:${reset}`);
+  for (const s of list) {
+    console.log(`  ${cyan}• ${s}${reset}`);
+  }
+  console.log();
+}
+
 async function handleOverview(args = []) {
   const magenta = '\x1b[35m';
   const red = '\x1b[31m';
@@ -30,9 +58,16 @@ async function handleOverview(args = []) {
   const targetPath = path.resolve(process.cwd(), rawTarget);
 
   if (!fs.existsSync(targetPath)) {
-    console.log(`\n${red}[rapidfire] Error: Target repository not found:${reset} ${rawTarget}`);
-    console.log(`${dim}Usage: overview [--critic] [folder] (e.g. "overview" or "overview --critic")\n${reset}`);
-    return { success: false, error: 'NOT_FOUND' };
+    renderOverviewErrorCard(
+      'ERROR: TARGET REPOSITORY NOT FOUND',
+      `Target repository path not found: ${rawTarget}`,
+      [
+        'overview                       (overview of current directory)',
+        'overview --critic              (senior architectural review of current repo)',
+        'overview <path-to-folder>      (overview of target directory)'
+      ]
+    );
+    return { success: false, error: 'NOT_FOUND', target: rawTarget };
   }
 
   const isInsideCwd = targetPath.startsWith(process.cwd()) && process.cwd() !== os.homedir();

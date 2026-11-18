@@ -31,12 +31,14 @@ async function handleKey(args) {
         ? `${activeKey.slice(0, 5)}...${activeKey.slice(-4)}`
         : '***';
       let source = '~/.rapidfire/config.json';
-      if (process.env.AI_API_KEY) source = 'process.env.AI_API_KEY';
+      const userCfg = getUserConfig();
+      if (userCfg && (userCfg.apiKey || userCfg.geminiApiKey)) {
+        source = '~/.rapidfire/config.json';
+      } else if (process.env.AI_API_KEY) source = 'process.env.AI_API_KEY';
       else if (process.env.GROQ_API_KEY) source = 'process.env.GROQ_API_KEY';
       else if (process.env.OPENAI_API_KEY) source = 'process.env.OPENAI_API_KEY';
       else if (process.env.GEMINI_API_KEY) source = 'process.env.GEMINI_API_KEY';
       else if (process.env.RAPIDFIRE_API_KEY) source = 'process.env.RAPIDFIRE_API_KEY';
-      else if (getUserConfig()?.apiKey || getUserConfig()?.geminiApiKey) source = '~/.rapidfire/config.json';
       else source = '.env file';
 
       console.log(`\n\x1b[32m[OK] AI API Key is configured!\x1b[0m`);

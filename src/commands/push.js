@@ -6,7 +6,22 @@ const { scanStagedChanges, scanUnpushedCommits, renderSecurityBanner, installSec
 const { promptConfirmation } = require('../utils/gitContext');
 
 function parseTokensWithQuotes(input) {
-  const raw = Array.isArray(input) ? input.join(' ') : (input || '');
+  if (Array.isArray(input)) {
+    const tokens = [];
+    for (const item of input) {
+      if (typeof item === 'string' && (item.includes('"') || item.includes("'"))) {
+        const regex = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
+        let match;
+        while ((match = regex.exec(item)) !== null) {
+          tokens.push(match[1] !== undefined ? match[1] : (match[2] !== undefined ? match[2] : match[0]));
+        }
+      } else if (item !== undefined && item !== null) {
+        tokens.push(String(item));
+      }
+    }
+    return tokens;
+  }
+  const raw = input || '';
   const regex = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
   const tokens = [];
   let match;

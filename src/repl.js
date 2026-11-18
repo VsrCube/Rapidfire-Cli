@@ -9,6 +9,10 @@ const { loadHistory, saveSessionHistory } = require('./utils/history');
 
 const RAPIDFIRE_DONE_SENTINEL = '__RAPIDFIRE_DONE__';
 
+function stripAnsi(str) {
+  return typeof str === 'string' ? str.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '') : '';
+}
+
 class RapidfireRepl {
   constructor() {
     this.shell = new PersistentShell();
@@ -17,6 +21,8 @@ class RapidfireRepl {
     this.isExecutingCommand = false;
     this.idleTimer = null;
     this.sessionCommands = [];
+    this.dataBuffer = '';
+    this.bufferFlushTimer = null;
   }
 
   getPrompt() {
@@ -99,46 +105,18 @@ class RapidfireRepl {
 
     this.shell.onData((data) => {
       let chunk = data;
-      if (chunk) chunk = chunk.replace(/\x1b\[\?(9001|1004)[hl]/g, '');
+      if (!chunk) return;
 
-      if (chunk) {
-        chunk = chunk.replace(/PS\s+[^\r\n>]+>\s*/g, '');
-        chunk = chunk.replace(/\[[a-zA-Z0-9_\-\.]+@[a-zA-Z0-9_\-\.]+\s+[^\]]+\][\$#]\s*/g, '');
+      this.dataBuffer += chunk;
+
+      // Handle raw prompt leak without newline (e.g. initial PS prompt or after command)
+      const cleanBuf = stripAnsi(this.dataBuffer).trim();
+      if (/^PS\s+[^\r\n>]+>\s*$/i.test(cleanBuf) || /^\[[a-zA-Z0-9_\-\.]+@[^\]]+\][\$#]\s*$/.test(cleanBuf)) {
+        this.dataBuffer = '';
+        return;
       }
 
-      if (chunk) {
-        chunk = chunk.replace(/;\s*(?:Write-Output\s+\("__RAPIDFIRE"\s*\+\s*"_DONE__"\)|echo\s+["']?__RAPIDFIRE["']?["']?_DONE__["']?|echo\s+["']?__RAPIDFIRE_DONE__["']?)/g, '');
-      }
-
-      let hasSentinel = false;
-      if (chunk && chunk.includes(RAPIDFIRE_DONE_SENTINEL)) {
-        hasSentinel = true;
-        chunk = chunk.replace(new RegExp(RAPIDFIRE_DONE_SENTINEL + '(\\r?\\n|\\s)*', 'g'), '');
-      }
-
-      if (this.expectedEcho && chunk) {
-        const trimmedEcho = this.expectedEcho.trim();
-        const escaped = trimmedEcho.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const echoRegex = new RegExp('^\\s*' + escaped + '\\s*(\\r?\\n|\u001b\\[[0-9;]*[a-zA-Z]|$)', 'g');
-        if (echoRegex.test(chunk)) {
-          chunk = chunk.replace(echoRegex, '');
-          this.expectedEcho = null;
-        } else if (chunk.trim() === trimmedEcho) {
-          chunk = '';
-          this.expectedEcho = null;
-        }
-      }
-
-      if (chunk) {
-        process.stdout.write(chunk);
-      }
-
-      if (hasSentinel) {
-        if (this.idleTimer) clearTimeout(this.idleTimer);
-        this.isPassthroughRunning = false;
-        this.expectedEcho = null;
-        this.prompt();
-      }
+      this.processIncomingData();
     });
 
     this.shell.onExit((code) => {
@@ -193,6 +171,131 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
 `);
   }
 
+  processIncomingData(flushAll = false) {
+    if (!this.dataBuffer) return;
+
+    const cleanBuf = stripAnsi(this.dataBuffer);
+    const hasSentinelToken = cleanBuf.includes(RAPIDFIRE_DONE_SENTINEL) || cleanBuf.includes('_DONE__');
+    const hasNewline = this.dataBuffer.includes('\n');
+
+    if (!flushAll && !hasNewline && !hasSentinelToken) {
+      if (this.bufferFlushTimer) clearTimeout(this.bufferFlushTimer);
+      this.bufferFlushTimer = setTimeout(() => {
+        if (this.dataBuffer) {
+          const clean = stripAnsi(this.dataBuffer).trim();
+          if (!/^PS\s+[^\r\n>]+>\s*$/i.test(clean) && !clean.includes('__RAPIDFIRE') && !clean.includes('Write-Output')) {
+            this.processIncomingData(true);
+          }
+        }
+      }, 25);
+      return;
+    }
+
+    if (this.bufferFlushTimer) {
+      clearTimeout(this.bufferFlushTimer);
+      this.bufferFlushTimer = null;
+    }
+
+    let toProcess = '';
+    if (flushAll || hasSentinelToken || this.dataBuffer.endsWith('\n')) {
+      toProcess = this.dataBuffer;
+      this.dataBuffer = '';
+    } else {
+      const lastNl = this.dataBuffer.lastIndexOf('\n');
+      toProcess = this.dataBuffer.slice(0, lastNl + 1);
+      this.dataBuffer = this.dataBuffer.slice(lastNl + 1);
+    }
+
+    toProcess = toProcess.replace(/\x1b\[\?(9001|1004)[hl]/g, '');
+
+    let hasSentinel = false;
+    const cleanProcess = stripAnsi(toProcess);
+    if (cleanProcess.includes(RAPIDFIRE_DONE_SENTINEL) || cleanProcess.includes('_DONE__')) {
+      hasSentinel = true;
+    }
+
+    // 1. Remove inline sentinel command invocation
+    toProcess = toProcess.replace(/;\s*(?:Write-Output\s*\([^)]*__RAPIDFIRE[^)]*\)|echo\s+["']?__RAPIDFIRE[^"'\r\n]*["']?)/gi, '');
+    toProcess = toProcess.replace(new RegExp(RAPIDFIRE_DONE_SENTINEL + '(\\r?\\n|\\s)*', 'g'), '');
+
+    // 2. Line-by-line filtering for echo, prompt leak, and sentinel remnants
+    const lines = toProcess.split(/(\r?\n)/);
+    const filtered = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const part = lines[i];
+      if (part === '\n' || part === '\r\n') {
+        filtered.push(part);
+        continue;
+      }
+
+      const clean = stripAnsi(part).trim();
+      if (!clean) {
+        filtered.push(part);
+        continue;
+      }
+
+      // Suppress any remaining sentinel or internal sync tokens
+      if (
+        clean.includes('__RAPIDFIRE') ||
+        clean.includes(RAPIDFIRE_DONE_SENTINEL) ||
+        clean.includes('Write-Output') ||
+        clean.includes('_DONE__') ||
+        clean.includes('("__RAPIDFIRE"')
+      ) {
+        if (clean.includes(RAPIDFIRE_DONE_SENTINEL) || clean.includes('_DONE__')) {
+          hasSentinel = true;
+        }
+        this.expectedEcho = null;
+        if (i + 1 < lines.length && (lines[i + 1] === '\n' || lines[i + 1] === '\r\n')) {
+          i++;
+        }
+        continue;
+      }
+
+      // Suppress expected typed command echo
+      if (this.expectedEcho) {
+        const cleanEcho = stripAnsi(this.expectedEcho).trim();
+        if (clean === cleanEcho || clean.startsWith(cleanEcho) || clean.endsWith(cleanEcho)) {
+          this.expectedEcho = null;
+          if (i + 1 < lines.length && (lines[i + 1] === '\n' || lines[i + 1] === '\r\n')) {
+            i++;
+          }
+          continue;
+        }
+      }
+
+      // Suppress underlying shell prompt leaks (e.g. "PS /path/to/dir>" or "[user@host dir]$")
+      if (/^PS\s+[^\r\n>]+>$/i.test(clean) || /^\[[a-zA-Z0-9_\-\.]+@[^\]]+\][\$#]$/.test(clean)) {
+        if (i + 1 < lines.length && (lines[i + 1] === '\n' || lines[i + 1] === '\r\n')) {
+          i++;
+        }
+        continue;
+      }
+
+      filtered.push(part);
+    }
+
+    let chunk = filtered.join('');
+
+    // Suppress chunk if only whitespace remains after stripping
+    if (stripAnsi(chunk).trim().length === 0 && chunk.length > 0) {
+      chunk = '';
+    }
+
+    if (chunk) {
+      process.stdout.write(chunk);
+    }
+
+    if (hasSentinel) {
+      if (this.idleTimer) clearTimeout(this.idleTimer);
+      this.isPassthroughRunning = false;
+      this.expectedEcho = null;
+      this.dataBuffer = '';
+      this.prompt();
+    }
+  }
+
   async handleLine(rawLine) {
     if (this.isExecutingCommand) {
       return;
@@ -234,6 +337,8 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
     if (suggestion) {
       console.log(`\x1b[33m[rapidfire] '${firstWord}' is not a recognized command. Did you mean '${suggestion}'?\x1b[0m`);
       console.log(`Type \x1b[36mhelp\x1b[0m to view all available commands.\n`);
+      this.prompt();
+      return;
     }
 
     this.handleCdSync(line);
@@ -282,6 +387,7 @@ ${dim}Type 'help' for built-in recipes, or run any standard shell command.${rese
   shutdown() {
     console.log('\n\x1b[33m[rapidfire] Exiting....\x1b[0m');
     if (this.idleTimer) clearTimeout(this.idleTimer);
+    if (this.bufferFlushTimer) clearTimeout(this.bufferFlushTimer);
     try {
       saveSessionHistory(this.sessionCommands);
     } catch { }

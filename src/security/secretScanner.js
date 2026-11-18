@@ -78,7 +78,8 @@ const IGNORED_EXTENSIONS = new Set([
   '.pdf', '.zip', '.tar', '.gz', '.7z', '.rar',
   '.woff', '.woff2', '.ttf', '.eot', '.otf',
   '.pyc', '.exe', '.dll', '.so', '.dylib', '.bin',
-  '.sqlite', '.sqlite3', '.db'
+  '.sqlite', '.sqlite3', '.db',
+  '.lock'
 ]);
 
 const IGNORED_FILENAMES = new Set([
@@ -109,6 +110,7 @@ function shouldSkipFile(filePath) {
   if (!filePath) return true;
   const basename = path.basename(filePath);
   if (IGNORED_FILENAMES.has(basename)) return true;
+  if (basename.endsWith('.test.js') || basename.endsWith('.spec.js')) return true;
 
   const ext = path.extname(filePath).toLowerCase();
   if (IGNORED_EXTENSIONS.has(ext)) return true;

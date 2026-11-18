@@ -101,11 +101,55 @@ function serializeDirectory(dirPath) {
   };
 }
 
-function deserializeDirectory(presetData, targetDir) {
-  fse.ensureDirSync(targetDir);
+function normalizePresetData(presetData) {
+  if (!presetData || typeof presetData !== 'object') return null;
+  if (Array.isArray(presetData.files)) return presetData;
+  if (presetData.tree && typeof presetData.tree === 'object') {
+    const files = [];
+    if (Array.isArray(presetData.tree.dirs)) {
+      for (const d of presetData.tree.dirs) {
+        files.push({ type: 'dir', path: d });
+      }
+    }
+    if (presetData.tree.files && typeof presetData.tree.files === 'object') {
+      for (const [filePath, content] of Object.entries(presetData.tree.files)) {
+        files.push({
+          type: 'file',
+          path: filePath,
+          encoding: 'utf8',
+          content: typeof content === 'string' ? content : (content ? String(content) : '')
+        });
+      }
+    }
+    return {
+      version: presetData.version || 1,
+      createdAt: presetData.savedAt || presetData.createdAt || new Date().toISOString(),
+      folderName: presetData.name || 'legacy',
+      manifest: presetData.manifest || null,
+      files
+    };
+  }
+  return null;
+}
 
-  for (const item of presetData.files) {
-    const destPath = path.join(targetDir, item.path);
+function deserializeDirectory(presetData, targetDir) {
+  const normalized = normalizePresetData(presetData);
+  if (!normalized || !Array.isArray(normalized.files)) {
+    throw new Error("Invalid preset structure: missing or invalid 'files' array.");
+  }
+
+  const resolvedTarget = path.resolve(targetDir);
+  fse.ensureDirSync(resolvedTarget);
+
+  for (const item of normalized.files) {
+    if (!item || !item.path) continue;
+    const destPath = path.resolve(resolvedTarget, item.path);
+
+    // Path traversal mitigation
+    if (!destPath.startsWith(resolvedTarget)) {
+      console.warn(`\x1b[33m[rapidfire-security] Blocked path traversal attempt in preset item: ${item.path}\x1b[0m`);
+      continue;
+    }
 
     if (item.type === 'dir') {
       fse.ensureDirSync(destPath);
@@ -114,15 +158,15 @@ function deserializeDirectory(presetData, targetDir) {
       fse.ensureDirSync(parentDir);
 
       if (item.encoding === 'base64') {
-        fse.writeFileSync(destPath, Buffer.from(item.content, 'base64'));
+        fse.writeFileSync(destPath, Buffer.from(item.content || '', 'base64'));
       } else {
-        fse.writeFileSync(destPath, item.content, 'utf8');
+        fse.writeFileSync(destPath, item.content || '', 'utf8');
       }
     }
   }
 
-  if (presetData.manifest && !fse.existsSync(path.join(targetDir, '.rapidfire.json'))) {
-    fse.writeJsonSync(path.join(targetDir, '.rapidfire.json'), presetData.manifest, { spaces: 2 });
+  if (normalized.manifest && !fse.existsSync(path.join(resolvedTarget, '.rapidfire.json'))) {
+    fse.writeJsonSync(path.join(resolvedTarget, '.rapidfire.json'), normalized.manifest, { spaces: 2 });
   }
 }
 
@@ -162,5 +206,6 @@ module.exports = {
   walkDirectory,
   serializeDirectory,
   deserializeDirectory,
+  normalizePresetData,
   isBinaryInPath
 };

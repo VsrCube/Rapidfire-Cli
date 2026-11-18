@@ -388,7 +388,7 @@ async function queryGemini({ apiKey, modelName, prompt, systemInstruction, histo
       const model = genAI.getGenerativeModel({
         model: targetModel,
         systemInstruction
-      });
+      }, { timeout: 15000 });
 
       if (isChat) {
         const historyToUse = history.slice(-10);

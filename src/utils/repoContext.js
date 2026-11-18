@@ -138,7 +138,10 @@ function extractRelevantSnippets(repoRoot, query, maxFiles = 3) {
           const lowerName = entry.name.toLowerCase();
           const baseNoExt = path.basename(lowerName, path.extname(lowerName));
 
-          const isMentioned = q.includes(lowerName) || (baseNoExt.length > 2 && q.includes(baseNoExt));
+          const camelWords = entry.name.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 2);
+          const isMentioned = q.includes(lowerName) ||
+                              (baseNoExt.length > 2 && q.includes(baseNoExt)) ||
+                              (camelWords.length > 1 && camelWords.every(w => q.includes(w) || (w === 'scanner' && (q.includes('scan') || q.includes('scanning')))));
           if (isMentioned && !filesFound.has(relPath)) {
             filesFound.add(relPath);
             try {

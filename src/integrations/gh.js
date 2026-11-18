@@ -55,7 +55,33 @@ function createRepo(projectPath, repoName, isPrivate = false) {
       run(commitCmd, { cwd: projectPath, stdio: 'pipe' });
       hasCommits = true;
     } catch (commitErr) {
-      console.warn('\x1b[33m[rapidfire] Initial commit notice:\x1b[0m', commitErr.message);
+      const errText = (commitErr.stdout ? commitErr.stdout.toString() : '') +
+                      (commitErr.stderr ? commitErr.stderr.toString() : '') +
+                      (commitErr.message || '');
+      const isSecretBlocked = errText.includes('LEAKED SECRETS') || errText.includes('[BLOCKED]') || errText.includes('Secret Shield');
+
+      if (isSecretBlocked) {
+        const bannerIdx = errText.indexOf('╔══');
+        if (bannerIdx !== -1) {
+          console.log('\n' + errText.slice(bannerIdx).trim() + '\n');
+        } else {
+          console.log('\n' + errText.trim() + '\n');
+        }
+        console.error('\x1b[31m[rapidfire-security] Remote repository creation aborted because leaked credentials were detected.\x1b[0m');
+        console.error('\x1b[33mRemove or replace the exposed secrets before linking or pushing to GitHub.\x1b[0m\n');
+        return {
+          success: false,
+          reason: 'secrets_blocked',
+          message: 'Initial commit blocked by RapidFire Secret Shield due to leaked credentials.'
+        };
+      }
+
+      console.warn('\x1b[33m[rapidfire] Initial commit could not be completed:\x1b[0m', commitErr.message);
+      return {
+        success: false,
+        reason: 'commit_failed',
+        message: commitErr.message
+      };
     }
   }
 

@@ -159,6 +159,10 @@ async function promptAndInstallDependencies(depInfo, rl) {
     return;
   }
 
+  if (!process.stdin.isTTY && process.env.RAPIDFIRE_AUTO_INSTALL !== '1') {
+    return;
+  }
+
   const { ecosystem, packages } = depInfo;
   const cyan = '\x1b[36m';
   const green = '\x1b[32m';

@@ -1,6 +1,6 @@
 const path = require('path');
 const fse = require('fs-extra');
-const { instructGemini, hasApiKey } = require('../ai/gemini');
+const gemini = require('../ai/gemini');
 const { ensureOrPromptApiKey } = require('./key');
 const { commandExists, run } = require('../utils/proc');
 
@@ -104,12 +104,12 @@ async function handleTell(args, context = {}) {
     return await handleArchiveCreation(instruction, context);
   }
 
-  if (!hasApiKey()) {
+  if (!gemini.hasApiKey()) {
     await ensureOrPromptApiKey(context);
   }
 
   console.log(`\n\x1b[36m[rapidfire-ai] Consulting Gemini Free Tier...\x1b[0m`);
-  const result = await instructGemini(instruction);
+  const result = await gemini.instructGemini(instruction);
 
   if (!result || !result.success || !Array.isArray(result.files) || result.files.length === 0) {
     console.error(`\x1b[31m[rapidfire-ai] Failed to generate code files for instruction.\x1b[0m`);

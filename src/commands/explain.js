@@ -5,6 +5,35 @@ const { explainFile, explainDirectory } = require('../ai/gemini');
 const { findRepoRoot, recordExplanationEntry } = require('../utils/repoMemory');
 const { formatMarkdownForTerminal, renderTerminalBox } = require('./ask');
 
+function renderExplainErrorCard(title, details, suggestions = []) {
+  const bold = '\x1b[1m';
+  const red = '\x1b[31m';
+  const yellow = '\x1b[33m';
+  const cyan = '\x1b[36m';
+  const reset = '\x1b[0m';
+  const dim = '\x1b[2m';
+
+  const cardTitle = (title || 'ERROR: TARGET NOT FOUND').slice(0, 60);
+  console.log(`\n${bold}${red}╔══════════════════════════════════════════════════════════════════╗${reset}`);
+  console.log(`${bold}${red}║  ${cardTitle.padEnd(62)}  ║${reset}`);
+  console.log(`${bold}${red}╚══════════════════════════════════════════════════════════════════╝${reset}\n`);
+
+  if (details) {
+    console.log(`  \x1b[31m${details}\x1b[0m\n`);
+  }
+
+  const list = (suggestions && suggestions.length > 0) ? suggestions : [
+    'explain .                      (inspect current directory architecture)',
+    'explain src/repl.js            (inspect specific source file)',
+    'explain <path-to-target>       (inspect any relative or absolute path)'
+  ];
+  console.log(`${bold}${yellow}Usage & Examples:${reset}`);
+  for (const s of list) {
+    console.log(`  ${cyan}• ${s}${reset}`);
+  }
+  console.log();
+}
+
 async function handleExplain(args) {
   const magenta = '\x1b[35m';
   const red = '\x1b[31m';
@@ -15,9 +44,16 @@ async function handleExplain(args) {
   const targetPath = path.resolve(process.cwd(), rawTarget);
 
   if (!fs.existsSync(targetPath)) {
-    console.log(`\n${red}[rapidfire] Error: Target does not exist:${reset} ${rawTarget}`);
-    console.log(`${dim}Usage: explain [file|folder] (e.g. "explain src/repl.js" or "explain .")\n${reset}`);
-    return { success: false, error: 'NOT_FOUND' };
+    renderExplainErrorCard(
+      'ERROR: TARGET DOES NOT EXIST',
+      `Target path not found: ${rawTarget}`,
+      [
+        'explain .                      (explain current directory architecture)',
+        'explain src/repl.js            (explain a specific source file)',
+        'explain <path-to-target>       (explain any relative or absolute path)'
+      ]
+    );
+    return { success: false, error: 'NOT_FOUND', target: rawTarget };
   }
 
   const stat = fs.statSync(targetPath);
@@ -35,7 +71,10 @@ async function handleExplain(args) {
   }
 
   if (!result || !result.success) {
-    console.log(`${red}[rapidfire] Failed to explain target:${reset} ${result ? result.message : 'Unknown error'}\n`);
+    renderExplainErrorCard(
+      'ERROR: EXPLANATION FAILED',
+      `Failed to explain target: ${result ? result.message : 'Unknown error'}`
+    );
     return result;
   }
 
@@ -87,5 +126,6 @@ async function handleExplain(args) {
 }
 
 module.exports = {
-  handleExplain
+  handleExplain,
+  renderExplainErrorCard
 };
