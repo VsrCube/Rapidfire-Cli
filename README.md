@@ -155,6 +155,7 @@ npm
 python
 pip
 docker
+etc
 ```
 
 ---
