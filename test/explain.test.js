@@ -29,10 +29,12 @@ assert.ok(fileRes.text.includes('DECLARED SYMBOLS & FUNCTIONS'), 'Must extract s
 console.log('  \x1b[32m✔ Deterministic fallback file inspection verified\x1b[0m');
 
 // 4. Fallback directory inspection
-const dirRes = fallbackExplainDirectory(path.join(__dirname, '..'));
+const repoDir = path.join(__dirname, '..');
+const repoName = path.basename(repoDir);
+const dirRes = fallbackExplainDirectory(repoDir);
 assert.ok(dirRes.success, 'fallbackExplainDirectory must succeed');
 assert.ok(dirRes.isFallback, 'Must be marked as fallback');
-assert.ok(dirRes.text.includes('CODEBASE ARCHITECTURE: miniproject'), 'Must format directory header');
+assert.ok(dirRes.text.includes(`CODEBASE ARCHITECTURE: ${repoName}`), 'Must format directory header');
 console.log('  \x1b[32m✔ Deterministic fallback directory inspection verified\x1b[0m');
 
 // 5. CLI invocation exit code for nonexistent target

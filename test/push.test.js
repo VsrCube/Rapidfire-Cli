@@ -29,27 +29,26 @@ assert.strictEqual(p4.message, 'specific files');
 
 console.log('  ✔ Argument parser verified across string and array token variations');
 
-// 2. Secret Shield git staging interception test
+
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rf_push_test_'));
 try {
   run('git init -b main', { cwd: tempDir, stdio: 'ignore' });
   run('git config user.name "Tester"', { cwd: tempDir, stdio: 'ignore' });
   run('git config user.email "test@rapidfire.dev"', { cwd: tempDir, stdio: 'ignore' });
 
-  // Install hooks
+
   installSecurityHooks(tempDir);
   assert(fs.existsSync(path.join(tempDir, '.git', 'hooks', 'pre-commit')), 'pre-commit hook installed');
   assert(fs.existsSync(path.join(tempDir, '.git', 'hooks', 'pre-push')), 'pre-push hook installed');
   console.log('  ✔ Secret Shield git hooks verified');
 
-  // Stage a clean file
+
   fs.writeFileSync(path.join(tempDir, 'clean.js'), 'console.log("clean code");\n');
   run('git add clean.js', { cwd: tempDir });
   const cleanScan = scanStagedChanges(tempDir);
   assert.strictEqual(cleanScan.clean, true, 'Clean file should have no findings');
   console.log('  ✔ Clean staged changes allowed');
 
-  // Stage a dirty file with OpenAI secret
   fs.writeFileSync(path.join(tempDir, 'dirty.env'), 'OPENAI_KEY=' + 'sk-' + 'proj-123456789012345678901234\n');
   run('git add dirty.env', { cwd: tempDir });
   const dirtyScan = scanStagedChanges(tempDir);
